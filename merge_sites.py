@@ -103,7 +103,8 @@ def get_out(l, n):
     return out
 
 def intersect(exons, peaks):
-    cmd = "|bedtools intersect -f .5 -wb -a %s -b %s" % (peaks, exons)
+    # group the output by gene
+    cmd = "|bedtools intersect -f .5 -wb -a %s -b %s | sort -k1,1 -k8,8 -k2,2n" % (peaks, exons)
     cols = ['chrom','start','stop','peak','chrom_','start_','stop_','gene','score_','strand']
     for g in grouper(nopen(cmd), cols):
         negs = []

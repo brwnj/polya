@@ -67,9 +67,14 @@ def multi_intersect(files, cutoff):
     merged_tmp.close()
     cleanup([tmp.name])
     # annotate the merged sites by intersecting with all of the files (ugly)
-    cmd = "|bedtools map -c 4 -o collapse -a {tmp} -b {sample_file}"
-    
-    
+    cmd = ""
+    for sample_file in paths:
+        if cmd == "":
+            cmd = "|bedtools map -c 4 -o collapse -a {tmp} -b {sample_file}".format(tmp=merged_tmp.name, **locals())
+        else:
+            cmd += " | bedtools map -c 4 -o collapse -a - -b {sample_file}".format(**locals())
+    for peak in reader(cmd, header=MappedPeak):
+        
     
 
     sys.exit()

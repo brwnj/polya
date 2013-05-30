@@ -28,19 +28,20 @@ def filter_peaks(files, classes):
         tmps[sample] = tmp.name
     return tmps
 
-def add_slop(files, sizes, n):
+def add_slop(files, sizes, n=0):
     """add slop onto bed regions for each peak file.
     files = {sample_name:file_path}
     """
     tmps = {}
-    for sample, f in files.iteritems():
+    for sample, file in files.iteritems():
         tmp = tempfile.mkstemp(suffix=".bed")[1]
-        cmd = "bedtools slop -b %d -i %s -g %s > %s" % (n, f, sizes, tmp)
+        cmd = "bedtools slop -b {n} -i {file} -g {sizes} > {tmp}".format(**locals())
         sp.call(cmd, shell=True)
         tmps[sample] = tmp
     return tmps
 
 def cleanup(files):
+    """remove the files of a list."""
     for f in files:
         if type(f) is dict:
             for i in f.values():
@@ -48,15 +49,14 @@ def cleanup(files):
         else:
             os.remove(f)
 
-def multi_intersect(files, fraction):
+def multi_intersect(files, cutoff):
     """files = {sample_name:file_path}"""
     tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
-    fraction = int(len(files) * fraction)
     names = " ".join(files.keys())
     paths = " ".join(files.values())
     cmd = "|bedtools multiinter -cluster -header -names %s -i %s" % (names, paths)
     for l in reader(cmd, header=True):
-        if int(l['num']) < fraction: continue
+        if int(l['num']) < cutoff: continue
         tmp.write("\t".join([l['chrom'], l['start'], l['end']]) + "\n")
     tmp.close()
     cmd = "|bedtools merge -d 2 -i %s" % tmp.name
@@ -66,7 +66,14 @@ def multi_intersect(files, fraction):
         merged_tmp.write("\t".join([l[c] for c in cols]) + "\tpeak_%d\n" % i)
     merged_tmp.close()
     cleanup([tmp.name])
-    return merged_tmp.name
+    # annotate the merged sites by intersecting with all of the files (ugly)
+    cmd = "|bedtools map -c 4 -o collapse -a {tmp} -b {sample_file}"
+    
+    
+    
+
+    sys.exit()
+    return False
 
 def lparser(line, cols):
     return dict(zip(cols, line.strip().split("\t")))
@@ -99,12 +106,18 @@ def unique_everseen(iterable, key=None):
 def get_out(l, n):
     out = [l['chrom'],l['start'],l['stop']]
     out.append("p.%s.%d" % (l['gene'], n))
-    out.extend([".", l['strand']])
+    out.extend(["0", l['strand']])
     return out
 
 def intersect(exons, peaks):
-    # group the output by gene
+    # group the output by chr->gene->start
     cmd = "|bedtools intersect -f .5 -wb -a %s -b %s | sort -k1,1 -k8,8 -k2,2n" % (peaks, exons)
+    # i think requiring 50% is wrong...
+    # debug why CDC34 most 3' site is being filtered out
+    # might have to add slop onto exons
+    print cmd
+    sys.exit()
+    
     cols = ['chrom','start','stop','peak','chrom_','start_','stop_','gene','score_','strand']
     for g in grouper(nopen(cmd), cols):
         negs = []
@@ -123,7 +136,7 @@ def intersect(exons, peaks):
 def main(args):
     tmps = filter_peaks(args.files, args.classes)
     tmps_with_slop = add_slop(tmps, args.sizes, args.bases)
-    peak_regions = multi_intersect(tmps_with_slop, args.fraction)
+    peak_regions = multi_intersect(tmps_with_slop, args.cutoff)
     intersect(args.exons, peak_regions)
     cleanup([tmps, tmps_with_slop, peak_regions])
 
@@ -144,8 +157,8 @@ if __name__ == '__main__':
             help="class of peaks used to generate consensus %(default)s")
 
     pinter = p.add_argument_group("intersecting")
-    pinter.add_argument("-f", dest="fraction", type=float, default=0.25,
-            help="fraction of samples containing called peak [%(default)s]")
+    pinter.add_argument("-n", dest="cutoff", type=int, default=2,
+            help="number of samples containing called peak [%(default)s]")
 
     args = p.parse_args()
     main(args)

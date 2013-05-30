@@ -19,7 +19,7 @@ def add_slop(bed, sizes, n):
 def map_counts(bed, bedgraph):
     """print counts to stdout using bedtools map"""
     cmd = """bedtools map -c 4 -o max -null 0 -a %s -b %s |\
-              awk '{split($4,gene,".");print gene[2]":"$4"\t"$7}'"""\
+              awk '{split($4,gene,".");print gene[3]":"$4"\t"$7}'"""\
               % (bed, bedgraph)
     sp.call(cmd, shell=True)
 

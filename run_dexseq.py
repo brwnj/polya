@@ -33,7 +33,7 @@ def dexseq(a, b, script):
     strand = get_strand([a, b])
     cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
             "{sample_b},{sample_b}x {b},{rep_b} "
-            "{a}_vs_{b}.{strand}.txt").format(**locals())
+            "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
     subprocess.call(cmd, shell=True)
     os.remove(rep_a)
     os.remove(rep_b)

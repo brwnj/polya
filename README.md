@@ -2,18 +2,15 @@
 
 Building the poly(A) reference from classified peaks:
 ```
-python merge_sites.py -b 0 ref/refseq.exon.bed.gz ref/hg18.sizes *classified.bed.gz > sites.bed
+python merge_sites.py -n2 -c3 refseq.exon.bed.gz *classified_peaks.bed > passing_sites.bed
 ```
 
 Getting the counts in order to run DEXSeq:
 ```
-bedtools map -s -c 4 -o max -null 0 -a sites_with_slop.bed -b MP55.pos.bedgraph.gz | cut -f 4,7
+python read_counts.py bedgraph polya_sites.bed hg18.sizes > counts
 ```
 
-Generating "replicates":
+Running DEXSeq:
 ```
-for f in *.counts;\
-    do awk 'BEGIN{OFS=FS="\t"}{foo=int(rand()*10);if($2!=0){print $1,$2+foo}else{print}}' $f\
-    > ${f%.counts}.x.counts;\
-done
+python run_dexseq.py A.pos.counts B.pos.counts run_dexseq.R
 ```

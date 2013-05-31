@@ -54,7 +54,7 @@ if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
             formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("script", help="run_dexseq.R")
+    p.add_argument("script", help="full path to run_dexseq.R")
     p.add_argument("files", nargs="+", help="count files to be tested")
     args = vars(p.parse_args())
     main(**args)

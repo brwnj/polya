@@ -4,8 +4,12 @@
 Given counts from 2 samples, generate a fake replicate and run DEXSeq.
 """
 import os, tempfile, subprocess
-from toolshed import reader
 from random import randint
+from toolshed import reader
+from itertools import combinations
+
+class StrandMismatch(Exception):
+    pass
 
 def replicate(fname, n=5):
     tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'w')
@@ -22,15 +26,16 @@ def sample_name(fname):
 
 def get_strand(flst):
     strand = set(["neg" if "neg" in f else "pos" for f in flst])
-    assert len(strand) == 1
+    if not len(strand) == 1:
+        raise StrandMismatch()
     return strand.pop()
 
 def dexseq(a, b, script):
+    strand = get_strand([a, b])
     sample_a = sample_name(a)
     sample_b = sample_name(b)
     rep_a = replicate(a)
     rep_b = replicate(b)
-    strand = get_strand([a, b])
     cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
             "{sample_b},{sample_b}x {b},{rep_b} "
             "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
@@ -38,12 +43,18 @@ def dexseq(a, b, script):
     os.remove(rep_a)
     os.remove(rep_b)
 
+def main(files, script):
+    for (a, b) in combinations(files, 2):
+        try:
+            dexseq(a, b, script)
+        except StrandMismatch:
+            continue
+
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
             formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("a", help="counts for first sample")
-    p.add_argument("b", help="counts for second sample")
     p.add_argument("script", help="run_dexseq.R")
+    p.add_argument("files", nargs="+", help="count files to be tested")
     args = vars(p.parse_args())
-    dexseq(**args)
+    main(**args)

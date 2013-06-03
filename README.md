@@ -2,7 +2,7 @@
 
 Classifying peaks:
 ```
-pclassify.py macs_peaks pos_bg neg_bg ref_fasta chrom_sizes \
+python pclassify.py macs_peaks pos_bg neg_bg ref_fasta chrom_sizes \
     | bedtools sort -i - > classified_peaks
 ```
 

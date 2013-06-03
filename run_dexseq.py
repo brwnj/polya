@@ -4,6 +4,7 @@
 Given counts from 2 samples, generate a fake replicate and run DEXSeq.
 """
 import os, tempfile, subprocess
+from bsub import bsub
 from random import randint
 from toolshed import reader
 from itertools import combinations
@@ -30,23 +31,21 @@ def get_strand(flst):
         raise StrandMismatch()
     return strand.pop()
 
-def dexseq(a, b, script):
-    strand = get_strand([a, b])
-    sample_a = sample_name(a)
-    sample_b = sample_name(b)
-    rep_a = replicate(a)
-    rep_b = replicate(b)
-    cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
-            "{sample_b},{sample_b}x {b},{rep_b} "
-            "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
-    subprocess.call(cmd, shell=True)
-    os.remove(rep_a)
-    os.remove(rep_b)
-
-def main(files, script):
+def main(files, script, projid, queue):
+    submit = bsub("dexseq", P=projid)
     for (a, b) in combinations(files, 2):
         try:
-            dexseq(a, b, script)
+            strand = get_strand([a, b])
+            sample_a = sample_name(a)
+            sample_b = sample_name(b)
+            rep_a = replicate(a)
+            rep_b = replicate(b)
+            cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
+                    "{sample_b},{sample_b}x {b},{rep_b} "
+                    "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
+            wait = submit(cmd)
+            cmd = "rm {rep_a} {rep_b}".format(**locals())
+            bsub("dexseq_cleanup", P=projid, w=wait)(cmd)
         except StrandMismatch:
             continue
 
@@ -56,5 +55,9 @@ if __name__ == '__main__':
             formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("script", help="full path to run_dexseq.R")
     p.add_argument("files", nargs="+", help="count files to be tested")
+    p.add_argument("-p", dest="projid", required=True,
+            help="project id for cluster usage tracking")
+    p.add_argument("-q", dest="queue", default="normal",
+            help="lsf queue [%(default)s]")
     args = vars(p.parse_args())
     main(**args)

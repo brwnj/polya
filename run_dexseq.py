@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-Given counts from 2 samples, generate a fake replicate and run DEXSeq.
+Given counts from 2 samples, generate fake replicates and run DEXSeq.
 """
 import os, tempfile, subprocess
 from bsub import bsub
@@ -55,7 +55,8 @@ if __name__ == '__main__':
             formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("script", help="full path to run_dexseq.R")
     p.add_argument("files", nargs="+", help="count files to be tested")
-    p.add_argument("-p", dest="projid", required=True,
+    req = p.add_argument_group("required arguments")
+    req.add_argument("-p", dest="projid", required=True,
             help="project id for cluster usage tracking")
     p.add_argument("-q", dest="queue", default="normal",
             help="lsf queue [%(default)s]")

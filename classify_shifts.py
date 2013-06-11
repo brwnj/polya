@@ -4,8 +4,6 @@
 Characterize poly(a) shifts from DEXSeq test results. Sample names are taken
 from the header (log2fold) of the DEXSeq output files.
 
-gene    samples_being_compared;samples_being_compared   direction_of_shift;direction_of_shift
-
 d  - distal shift
 nt - notest
 ns - not significant
@@ -76,6 +74,10 @@ def main(dexseq, pval):
     print dex_runs
     # into datatable with na vals
     # print to facility gene search in viewing
+    # desired output is something like:
+    # gene    MP55_to_MP56    MP56_to_MP57
+    # DEK     p               p
+    # MALAT1  d               d
 
 if __name__ == '__main__':
     import argparse

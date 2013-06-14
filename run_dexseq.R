@@ -4,8 +4,8 @@
  
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("DEXSeq")
-library(DEXSeq)
-library(parallel)
+library("DEXSeq")
+library("parallel")
 
 args <- commandArgs(TRUE)
 groupa_names <- args[1]

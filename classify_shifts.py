@@ -32,7 +32,7 @@ def shift(aid, afold, bid, bfold):
     """determine direction of change.
     pos to neg - proximal
     neg to pos - distal    
-    fold change does not flip - same
+    fold change does not flip - indicate whether both increased or decreased
     """
     if aid > bid:
         return shift(bid, bfold, aid, afold)

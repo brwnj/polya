@@ -76,7 +76,7 @@ def main(dexseq, pval):
                 dex_runs[run_id]["{gene}:{comp}".format(gene=site['geneID'], comp=comp)] = direction
     df = pd.DataFrame(dex_runs)
     # pull out the multiindex via split
-    df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['gene','comparison'])
+    df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['gene','sites'])
     df.to_csv(sys.stdout, sep="\t", na_rep="na")
     
 if __name__ == '__main__':

@@ -66,10 +66,10 @@ def main(dexseq, pval):
         for group in grouper(reader(fname, header=True), "geneID"):
             results = OrderedDict()
             for site in group:
-                # NA for any gene without multiple sites
-                if site['padjust'] == "NA": continue
                 # p-value threshold filtering
                 if float(site['padjust']) > pval: continue
+                # fold change should recorded from dexseq
+                assert site['padjust'] == "NA"
                 site_id = int(site['exonID'].rsplit(".")[-1])
                 results[site_id] = {'fc':float(site[log2fold]), 'name':site['exonID'].lstrip('E')}
             if len(results) < 2: continue

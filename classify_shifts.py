@@ -68,7 +68,7 @@ def main(dexseq, pval):
             for site in group:
                 # p-value threshold filtering
                 if float(site['padjust']) > pval: continue
-                # fold change should recorded from dexseq
+                # fold change should be recorded from dexseq
                 assert site['padjust'] == "NA"
                 site_id = int(site['exonID'].rsplit(".")[-1])
                 results[site_id] = {'fc':float(site[log2fold]), 'name':site['exonID'].lstrip('E')}
@@ -81,7 +81,7 @@ def main(dexseq, pval):
                 # complex name to ease creating multiindex dataframe
                 dex_runs[run_id]["{gene}:{comp}".format(gene=site['geneID'], comp=comp)] = direction
     df = pd.DataFrame(dex_runs)
-    # pull out the multiindex via split
+    # create multiindex via split
     df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Sites'])
     df.to_csv(sys.stdout, sep="\t", na_rep="na")
     

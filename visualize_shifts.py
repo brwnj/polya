@@ -3,12 +3,16 @@
 """
 """
 
-def bed12line(chrm, strt, stp, shft):
-    arrw = "+" if shft == ""
-    l = int(strt) - int(stp)
-    return "{chrm}\t{strt}\t{stp}\t{shft}\t0\t{arrw}\t{strt}\t{stp}\t0\t1\t{l}\t0".format(**locals())
+def bed12line(chr, start, stop, shift):
+    # needs to account for strand of gene and shift direction
+    arrow = "+"
+    score = 0
+    color = "255,0,0"
+    diff = int(stop) - int(start) - 1
+    return "{chr}\t{start}\t{stop}\t{shift}\t{score}\t{arrow}\t{start}\t{stop}\t{color}\t2\t1,1\t0,{diff}".format(**locals())
 
 def main(args):
+    
 
 if __name__ == '__main__':
     import argparse

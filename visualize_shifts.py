@@ -4,6 +4,7 @@
 From the shifts and merged sites, create a bed12 in order to improve shift
 visualization in UCSC browser.
 """
+import sys
 from toolshed import reader
 
 class Bed(object):
@@ -33,6 +34,9 @@ def main(args):
     sites = sites_to_dict(args.sites)
     cols = reader(args.shifts, header=False).next()
     shift_col = cols[-1]
+    if args.trackline:
+        print ('track type=bed name="{name}" description="{name}" '
+                'color={color}').format(name=args.name, color=args.color)
     for l in reader(args.shifts):
         a, b = l['Sites'].split(",")
         a = sites[a]
@@ -47,5 +51,13 @@ if __name__ == '__main__':
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument("shifts", help="output of `classify_shifts.py`")
     p.add_argument("sites", help="output of `merge_sites.py`")
+    g = p.add_argument_group("trackline options")
+    g.add_argument("--trackline", action="store_true",
+            help="print UCSC trackline")
+    g.add_argument('--color', default="0,0,255", help="track color")
+    g.add_argument('--name', help="trackline name and description")
     args = p.parse_args()
+    if args.trackline and not args.name:
+        print >>sys.stderr, "\nMust supply --name with trackline.\n"
+        sys.exit(1)
     main(args)

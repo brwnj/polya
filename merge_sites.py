@@ -40,11 +40,17 @@ def filter_peaks(files, classes):
         sample = op.basename(f).split(".")[0].split("_")[0]
         tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'w')
         res = ["chrom", "start", "stop", "name", "score", "strand"]
+        i = 0
         for l in reader(f, header=res):
             c = int(l['name'].split(":")[1])
             if c not in classes: continue
+            i += 1
             tmp.write("\t".join(l[i] for i in res) + "\n")
         tmp.close()
+        # ensure at least one peak exists for this sample
+        if i < 1:
+            os.remove(tmp.name)
+            continue
         tmps[sample] = tmp.name
     return tmps
 

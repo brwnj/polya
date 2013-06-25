@@ -83,10 +83,14 @@ def main(dexseq, pval):
                 comp = "{aname},{bname}".format(aname=ad['name'], bname=bd['name'])
                 # complex name to ease creating multiindex dataframe
                 dex_runs[run_id]["{gene}:{comp}".format(gene=site['geneID'], comp=comp)] = direction
-    df = pd.DataFrame(dex_runs)
-    # create multiindex via split
-    df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Sites'])
-    df.to_csv(sys.stdout, sep="\t", na_rep="na")
+    try:
+        df = pd.DataFrame(dex_runs)
+        # create multiindex via split
+        df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Sites'])
+        df.to_csv(sys.stdout, sep="\t", na_rep="na")
+    except Exception:
+        # empty dataframe
+        print >>sys.stderr, "No significant sites were found."
     
 if __name__ == '__main__':
     import argparse

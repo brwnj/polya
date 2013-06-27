@@ -13,7 +13,7 @@ class StrandMismatch(Exception):
     pass
 
 def replicate(fname, n=5):
-    tmp = open(tempfile.mkstemp(suffix=".txt")[1], 'w')
+    tmp = open(tempfile.mkstemp(suffix=".txt", dir=".")[1], 'w')
     for c in reader(fname, header=['name','count']):
         count = int(c['count'])
         low = count - n if count - n > 0 else 0
@@ -33,7 +33,6 @@ def get_strand(flst):
 
 def main(files, script, projid, queue):
     submit = bsub("dexseq", P=projid)
-    jobids = []
     for (a, b) in combinations(files, 2):
         try:
             strand = get_strand([a, b])
@@ -41,17 +40,17 @@ def main(files, script, projid, queue):
             sample_b = sample_name(b)
             rep_a = replicate(a)
             rep_b = replicate(b)
+            result = "{sample_a}_vs_{sample_b}.{strand}.txt".format(**locals())
+            if os.path.exists(result):
+                continue
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
                     "{sample_b},{sample_b}x {b},{rep_b} "
-                    "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
-            wait = submit(cmd)
-            cmd = "rm {rep_a} {rep_b}".format(**locals())
-            jobids.append(bsub("dexseq_cleanup", P=projid, w=wait)(cmd))
+                    "{result}").format(**locals())
+            submit(cmd) # wait = submit(cmd)
+            # cmd = "rm {rep_a} {rep_b}".format(**locals())
+            # bsub("dexseq_cleanup", P=projid, w=wait)(cmd)
         except StrandMismatch:
             continue
-    # bsub.poll(jobids)
-    # check the output files
-    # resubmit anything with all NA
 
 if __name__ == '__main__':
     import argparse

@@ -38,11 +38,11 @@ def main(files, script, projid, queue):
             strand = get_strand([a, b])
             sample_a = sample_name(a)
             sample_b = sample_name(b)
-            rep_a = replicate(a)
-            rep_b = replicate(b)
             result = "{sample_a}_vs_{sample_b}.{strand}.txt".format(**locals())
             if os.path.exists(result) or os.path.exists(result + ".gz"):
                 continue
+            rep_a = replicate(a)
+            rep_b = replicate(b)
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
                     "{sample_b},{sample_b}x {b},{rep_b} "
                     "{result}").format(**locals())

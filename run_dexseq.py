@@ -33,6 +33,7 @@ def get_strand(flst):
 
 def main(files, script, projid, queue):
     submit = bsub("dexseq", P=projid)
+    jobids = []
     for (a, b) in combinations(files, 2):
         try:
             strand = get_strand([a, b])
@@ -45,20 +46,23 @@ def main(files, script, projid, queue):
                     "{sample_a}_vs_{sample_b}.{strand}.txt").format(**locals())
             wait = submit(cmd)
             cmd = "rm {rep_a} {rep_b}".format(**locals())
-            bsub("dexseq_cleanup", P=projid, w=wait)(cmd)
+            jobids.append(bsub("dexseq_cleanup", P=projid, w=wait)(cmd))
         except StrandMismatch:
             continue
+    # bsub.poll(jobids)
+    # check the output files
+    # resubmit anything with all NA
 
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
-            formatter_class=argparse.RawDescriptionHelpFormatter)
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument("script", help="full path to run_dexseq.R")
     p.add_argument("files", nargs="+", help="count files to be tested")
     req = p.add_argument_group("required arguments")
     req.add_argument("-p", dest="projid", required=True,
             help="project id for cluster usage tracking")
     p.add_argument("-q", dest="queue", default="normal",
-            help="lsf queue [%(default)s]")
+            help="lsf queue")
     args = vars(p.parse_args())
     main(**args)

@@ -13,7 +13,7 @@ class StrandMismatch(Exception):
     pass
 
 def replicate(fname, n=5):
-    tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'w')
+    tmp = open(tempfile.mkstemp(suffix=".txt")[1], 'w')
     for c in reader(fname, header=['name','count']):
         count = int(c['count'])
         low = count - n if count - n > 0 else 0

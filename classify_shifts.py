@@ -54,7 +54,7 @@ def pairs(odict):
     for i in xrange(0, len(elements)-1):
         yield elements[i], elements[i+1]
 
-def main(dexseq, pval):
+def main(dexseq, pval, pval_cutoff):
     dex_runs = OrderedDict()
     for fname in dexseq:
         cols = reader(fname, header=False).next()[1:]
@@ -68,7 +68,7 @@ def main(dexseq, pval):
             for site in group:
                 try:
                     # p-value threshold filtering
-                    if float(site['padjust']) > pval: continue
+                    if float(site[pval]) > pval_cutoff: continue
                 except ValueError:
                     continue
                 # fold change should be recorded from dexseq
@@ -98,7 +98,9 @@ if __name__ == '__main__':
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('dexseq', metavar="DEXSEQ", nargs="+",
             help="DEXSeq result files obtained via `run_dexseq.py`.")
-    p.add_argument('-p', dest="pval", default=0.05, type=float,
+    p.add_argument('-p', dest="pval_cutoff", default=0.05, type=float,
             help="p-value cutoff")
+    p.add_argument('-v', dest="pval", default="padjust",
+            choices=['pvalue, padjust'], help="which p used for cutoff")
     args = vars(p.parse_args())
     main(**args)

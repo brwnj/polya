@@ -167,6 +167,9 @@ def intersect(exons, peaks):
             print "\t".join(get_out(l, i))
 
 def main(exons, files, classes, cutoff):
+    ## TODO:
+    # filtering peaks should be done last in order to preserve site ids across
+    # preferred class tracks
     tmps = filter_peaks(files, classes)
     peak_regions = multi_intersect(tmps, files, cutoff)
     intersect(exons, peak_regions)

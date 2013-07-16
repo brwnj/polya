@@ -164,7 +164,7 @@ def classify_peaks(bed, min_count, a_region_size, a_ratio, can_region, out, size
     """classify the peak sequences."""
     res = ["chrom", "start", "stop", "name", "count", "strand", "seq"]
     for i, l in enumerate(reader(bed, header=res), start=1):
-        # filter out peaks with less than 10 reads of support
+        # filter out peaks with low read support
         if int(l['count']) < min_count: continue
         cat = peak_category(l['seq'], a_region_size, a_ratio, can_region)
         # no more than three canonical PAS located in the upstream window

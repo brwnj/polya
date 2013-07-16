@@ -31,7 +31,7 @@ def grouper(iterable, col):
 def shift(aid, afold, bid, bfold):
     """determine direction of change.
     pos to neg - proximal
-    neg to pos - distal    
+    neg to pos - distal
     fold change does not flip - indicate whether both increased or decreased
     """
     if aid > bid:
@@ -91,7 +91,7 @@ def main(dexseq, pval, pval_cutoff):
     except Exception:
         # empty dataframe
         print >>sys.stderr, "No significant sites were found."
-    
+
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description=__doc__,

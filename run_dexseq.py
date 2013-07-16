@@ -46,7 +46,11 @@ def main(files, script, projid, queue):
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
                     "{sample_b},{sample_b}x {b},{rep_b} "
                     "{result}").format(**locals())
-            submit(cmd) # wait = submit(cmd)
+            submit(cmd)
+            
+            # temp files now written to working directory and deleted by user
+            
+            # wait = submit(cmd)
             # cmd = "rm {rep_a} {rep_b}".format(**locals())
             # bsub("dexseq_cleanup", P=projid, w=wait)(cmd)
         except StrandMismatch:

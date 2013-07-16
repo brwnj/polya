@@ -26,8 +26,8 @@ stopifnot(la == lb)
 
 design <- data.frame(row.names=(c(anames, bnames)),
             condition=c(rep(groupa_name, la), rep(groupb_name, lb)))
-cds <- read.HTSeqCounts(countfiles=c(afiles, bfiles), design=design)
-cds <- estimateSizeFactors(cds)
+counts <- read.HTSeqCounts(countfiles=c(afiles, bfiles), design=design)
+cds <- estimateSizeFactors(counts)
 cds <- estimateDispersions(cds, minCount=1, nCores=4, quiet=TRUE)
 cds <- fitDispersionFunction(cds)
 cds <- estimatelog2FoldChanges(cds, nCores=4)
@@ -37,8 +37,7 @@ res <- DEUresultTable(cds)
 # fix negative or zero intercept
 if(is.na(table(is.na(res$log2fold))["FALSE"]) && cds@dispFitCoefs <= 0){
     # start over...
-    cds <- read.HTSeqCounts(countfiles=c(afiles, bfiles), design=design)
-    cds <- estimateSizeFactors(cds)
+    cds <- estimateSizeFactors(counts)
     cds <- estimateDispersions(cds, minCount=1, nCores=4, quiet=TRUE)
     cds <- fitDispersionFunction(cds)
     
@@ -51,5 +50,4 @@ if(is.na(table(is.na(res$log2fold))["FALSE"]) && cds@dispFitCoefs <= 0){
     cds <- testForDEU(cds, nCores=4)
     res <- DEUresultTable(cds)
 }
-
 write.table(res, file=output, sep="\t", col.names=NA)

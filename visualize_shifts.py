@@ -24,7 +24,7 @@ def bed12line(chrom, start, stop, strand, shift):
     color = "255,0,0"
     diff = stop - start - 1
     return [chrom, start, stop, shift, score, arrow,
-                start, stop, color, 2, "1,1", 0, diff]
+                start, stop, color, 2, "1,1", "0, {diff}".format(**locals())]
 
 def sites_to_dict(bed):
     d = {}

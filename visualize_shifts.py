@@ -6,7 +6,6 @@ trackline to visualize shift in UCSC browser. Strand is determined from the file
 name and must be present.
 """
 import sys
-import gzip
 import operator
 from toolshed import reader
 
@@ -52,31 +51,27 @@ def shifts_to_dict(cols, fname):
             d[c][l['Sites']] = l[c]
     return d
 
-def main(args):
-    color = "0,0,255"
+def main(shifts, sites):
     try:
-        strand = get_strand(args.shifts)
+        strand = get_strand(shifts)
     except StrandNotFound:
         print >>sys.stderr, "\nStrand ('pos', 'neg') must be in file name.\n"
         sys.exit(1)
-    refsites = sites_to_dict(args.sites)
-    cols = reader(args.shifts, header=False).next()
+    refsites = sites_to_dict(sites)
+    cols = reader(shifts, header=False).next()
     comparisons = cols[2:]
-    shifts = shifts_to_dict(comparisons, args.shifts)
-    for comparison, all_sites in shifts.iteritems():
+    shifts_d = shifts_to_dict(comparisons, shifts)
+    for comparison, all_sites in shifts_d.iteritems():
         lines = []
-        for (sites, shift) in all_sites.iteritems():
-            a, b = sites.split(",")
+        for (site, shift) in all_sites.iteritems():
+            a, b = site.split(",")
             a = refsites[a]
             b = refsites[b]
             lines.append(bed12line(a.chrom, a.start, b.stop, a.strand, shift))
         lines = sorted(lines, key=operator.itemgetter(0, 1))
-        f = gzip.open("{comparison}.{strand}.track.bed.gz".format(**locals()), 'wb')
-        f.write(('track type=bed name="{comparison}"'
-                    ' description="{comparison} {strand}"'
-                    ' color={color}\n').format(**locals()))
+        f = open("{comparison}.{strand}.bed".format(**locals()), 'wb')
         for line in lines:
-            f.write("\t".join(map(str, line)) + "\n")
+            print >>f, "\t".join(map(str, line))
         f.close()
 
 if __name__ == '__main__':
@@ -86,4 +81,4 @@ if __name__ == '__main__':
     p.add_argument("shifts", help="output of `classify_shifts.py`")
     p.add_argument("sites", help="output of `merge_sites.py`")
     args = p.parse_args()
-    main(args)
+    main(args.shifts, args.sites)

@@ -68,12 +68,16 @@ def main(dexseq, pval, pval_cutoff):
     dex_runs = OrderedDict()
     for fname in dexseq:
         cols = reader(fname, header=False).next()[1:]
-        a, b = sample_names(cols, "log2fold")
         try:
+            a, b = sample_names(cols, "log2fold")
             strand = gstrand(fname)
         except StrandNotFound:
-            print >>sys.stderr, "\nStrand ('pos', 'neg') must be in file names.\n"
+            print >>sys.stderr, ">> strand (pos, neg) must be in file names."
             sys.exit(1)
+        except UnboundLocalError:
+            print >>sys.stderr, ">> failed to get sample names for", fname
+            print >>sys.stderr, ">> skipping..."
+            continue
         log2fold = cols[-1]
         assert a != b
         run_id = "{a}_to_{b}.{strand}".format(**locals())

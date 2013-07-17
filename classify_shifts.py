@@ -11,6 +11,9 @@ from toolshed import reader
 from itertools import groupby
 from collections import OrderedDict
 
+class StrandNotFound(Exception):
+    pass
+
 def parse_name(name):
     """
     >>> parse_name("MP51MP51x")
@@ -23,6 +26,13 @@ def sample_names(cols, item):
         if not item in c: continue
         b, a = c.rstrip(")").split("(", 1)[-1].split("/")
     return parse_name(a), parse_name(b)
+
+def gstrand(fname):
+    if "pos" in fname:
+        return "pos"
+    if "neg" in fname:
+        return "neg"
+    raise StrandNotFound()
 
 def grouper(iterable, col):
     for k, g in groupby(iterable, key=lambda t: t[col]):
@@ -59,9 +69,14 @@ def main(dexseq, pval, pval_cutoff):
     for fname in dexseq:
         cols = reader(fname, header=False).next()[1:]
         a, b = sample_names(cols, "log2fold")
+        try:
+            strand = gstrand(fname)
+        except StrandNotFound:
+            print >>sys.stderr, "\nStrand ('pos', 'neg') must be in file names.\n"
+            sys.exit(1)
         log2fold = cols[-1]
         assert a != b
-        run_id = "{a}_to_{b}".format(**locals())
+        run_id = "{a}_to_{b}.{strand}".format(**locals())
         dex_runs[run_id] = {}
         for group in grouper(reader(fname, header=True), "geneID"):
             results = OrderedDict()

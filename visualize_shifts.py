@@ -9,21 +9,11 @@ import sys
 import operator
 from toolshed import reader
 
-class StrandNotFound(Exception):
-    pass
-
 class Bed(object):
     def __init__(self, toks):
         self.chrom = toks[0]
         self.start, self.stop = map(int, toks[1:3])
         self.name, self.score, self.strand = toks[3:6]
-
-def get_strand(fname):
-    if "pos" in fname:
-        return "pos"
-    if "neg" in fname:
-        return "neg"
-    raise StrandNotFound()
 
 def bed12line(chrom, start, stop, strand, shift):
     if strand == "+":
@@ -52,11 +42,6 @@ def shifts_to_dict(cols, fname):
     return d
 
 def main(shifts, sites):
-    try:
-        strand = get_strand(shifts)
-    except StrandNotFound:
-        print >>sys.stderr, "\nStrand ('pos', 'neg') must be in file name.\n"
-        sys.exit(1)
     refsites = sites_to_dict(sites)
     cols = reader(shifts, header=False).next()
     comparisons = cols[2:]
@@ -69,7 +54,7 @@ def main(shifts, sites):
             b = refsites[b]
             lines.append(bed12line(a.chrom, a.start, b.stop, a.strand, shift))
         lines = sorted(lines, key=operator.itemgetter(0, 1))
-        f = open("{comparison}.{strand}.bed".format(**locals()), 'wb')
+        f = open("{comparison}.bed".format(**locals()), 'wb')
         for line in lines:
             print >>f, "\t".join(map(str, line))
         f.close()

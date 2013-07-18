@@ -32,7 +32,7 @@ def get_strand(flst):
     return strand.pop()
 
 def main(files, script, projid, queue):
-    submit = bsub("dexseq", P=projid)
+    submit = bsub("dexseq", P=projid, q=queue)
     for (a, b) in combinations(files, 2):
         try:
             strand = get_strand([a, b])
@@ -47,12 +47,6 @@ def main(files, script, projid, queue):
                     "{sample_b},{sample_b}x {b},{rep_b} "
                     "{result}").format(**locals())
             submit(cmd)
-            
-            # temp files now written to working directory and deleted by user
-            
-            # wait = submit(cmd)
-            # cmd = "rm {rep_a} {rep_b}".format(**locals())
-            # bsub("dexseq_cleanup", P=projid, w=wait)(cmd)
         except StrandMismatch:
             continue
 

@@ -4,11 +4,13 @@
 Find the consensus of peaks among samples -- Assumes sample name is first in the
 file name, delimited by either "." or "_" from the rest of the file name.
 """
-import os, sys, tempfile
+import os
+import sys
+import tempfile
 import os.path as op
 import subprocess as sp
-from itertools import groupby, ifilterfalse, count, izip
 from toolshed import reader, nopen
+from itertools import groupby, ifilterfalse, count, izip
 
 class AnnotatedPeak(object):
     __slots__ = ['chrom','start','stop','name']
@@ -22,34 +24,28 @@ class AnnotatedPeak(object):
             observed.append(peak.rsplit(':', 1)[-1])
         # add most abundant classification onto name; name must be unique
         self.name += ":" + max(set(observed), key=observed.count)
-    
+
     def __repr__(self):
         return "AnnotatedPeak({chr}:{name})".format(chr=self.chrom, name=self.name)
-    
+
     def __str__(self):
         return "\t".join([getattr(self, s) for s in self.__slots__])
 
-def filter_peaks(files, classes):
-    """removes peaks that do not match a class in classes."""
-    tmps = {}
-    classes = set(classes)
-    for f in files:
-        sample = op.basename(f).split(".")[0].split("_")[0]
-        tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'w')
-        res = ["chrom", "start", "stop", "name", "score", "strand"]
-        i = 0
-        for l in reader(f, header=res):
-            c = int(l['name'].split(":")[1])
-            if c not in classes: continue
-            i += 1
-            tmp.write("\t".join(l[i] for i in res) + "\n")
-        tmp.close()
-        # ensure at least one peak exists for this sample
-        if i < 1:
-            os.remove(tmp.name)
-            continue
-        tmps[sample] = tmp.name
-    return tmps
+class PeakBed(object):
+    __slots__ = ['chrom','start','stop','name','score','strand']
+    def __init__(self, args):
+        for k, v in zip(self.__slots__, args):
+            setattr(self, k, v)
+
+    def __repr__(self):
+        return "PeakBed({chr}:{name})".format(chr=self.chrom, name=self.name)
+
+    def __str__(self):
+        return "\t".join([getattr(self, s) for s in self.__slots__])
+    
+    @property
+    def pclass(self):
+        return int(self.name.split(".")[1].lstrip("c"))
 
 def cleanup(files):
     """remove the files of a list."""
@@ -81,30 +77,30 @@ def map_peak_class(annotated_peaks, merged_tmp):
         cleanup([merged_tmp])
         return tmp
 
-def multi_intersect(slopfiles, origfiles, cutoff):
+def multi_intersect(files, cutoff):
     """files = {sample_name:file_path}"""
     sitestmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
-    names = " ".join(slopfiles.keys())
-    paths = " ".join(slopfiles.values())
+    snames = [op.basename(f).split(".")[0].split("_")[0] for f in files]
     cmd = ("|bedtools multiinter -cluster -header "
-            "-names {names} -i {paths}").format(**locals())
+                "-names {names} -i {files}").format(names=" ".join(snames),
+                                                    files=" ".join(files))
     # apply cutoff, name peaks
     for i, l in enumerate(reader(cmd, header=True)):
         if int(l['num']) < cutoff: continue
-        sitestmp.write("\t".join([l['chrom'], l['start'], l['end']]) + \
-                            "\tpeak_{i}\n".format(i=i))
+        print >>sitestmp, "\t".join([l['chrom'], l['start'], l['end'],
+                                        "peak_{i}".format(i=i)])
     sitestmp.close()
     # annotate the merged sites by intersecting with all of the files
     classtmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     annotated_peaks = sitestmp.name
     # pull out peak classes from input files
-    for sample_file in origfiles:
-        annotated_peaks = map_peak_class(sample_file, annotated_peaks)
+    for f in files:
+        annotated_peaks = map_peak_class(f, annotated_peaks)
     for peak in reader(annotated_peaks, header=AnnotatedPeak):
         if peak.name is None: continue
-        classtmp.write("{chrom}\t{start}\t{stop}\t{name}\n".format(
-                    chrom=peak.chrom, start=peak.start,
-                    stop=peak.stop, name=peak.name))
+        print >>classtmp, "{chrom}\t{start}\t{stop}\t{name}\n".format(
+                                chrom=peak.chrom, start=peak.start,
+                                stop=peak.stop, name=peak.name)
     classtmp.close()
     return classtmp.name
 
@@ -145,12 +141,13 @@ def get_out(l, n):
     out.extend(["0", l['strand']])
     return out
 
-def intersect(exons, peaks):
+def intersect(ref, peaks):
     # group the output by chr->gene->start
-    cmd = ("|bedtools intersect -wb -a {peaks} -b {exons} "
+    cmd = ("|bedtools intersect -wb -a {peaks} -b {ref} "
                 "| sort -k1,1 -k8,8 -k2,2n").format(**locals())
     cols = ['chrom','start','stop','peak','_chrom',
                 '_start','_stop','gene','_score','strand']
+    tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     for g in grouper(nopen(cmd), cols):
         negs = []
         for i, l in enumerate(unique_everseen(\
@@ -162,25 +159,31 @@ def intersect(exons, peaks):
                 negs.append(l)
                 continue
             # positive stranded sites
-            print "\t".join(get_out(l, i))
+            print >>tmp, "\t".join(get_out(l, i))
         for i, l in izip(count(len(negs), -1), negs):
-            print "\t".join(get_out(l, i))
+            print >>tmp, "\t".join(get_out(l, i))
+    tmp.close()
+    return tmp.name
 
-def main(exons, files, classes, cutoff):
-    ## TODO:
-    # filtering peaks should be done last in order to preserve site ids across
-    # preferred class tracks
-    tmps = filter_peaks(files, classes)
-    peak_regions = multi_intersect(tmps, files, cutoff)
-    intersect(exons, peak_regions)
-    cleanup([tmps, peak_regions])
+def filter_peaks(bed, classes):
+    """removes peaks that do not match a class in classes."""
+    classes = set(classes)
+    for b in reader(bed, header=PeakBed):
+        if b.pclass not in classes: continue
+        print b
+
+def main(ref, files, classes, cutoff):
+    peak_regions = multi_intersect(files, cutoff)
+    all_peaks = intersect(ref, peak_regions)
+    filter_peaks(all_peaks, classes)
+    cleanup([peak_regions, all_peaks])
 
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
-    p.add_argument("exons", help="bed of unique exons with gene symbol as name")
+
+    p.add_argument("ref", help="bed of unique regions with gene symbol as name")
     p.add_argument("files", nargs="+", help="classified peaks")
 
     psites = p.add_argument_group("poly(A) sites")
@@ -192,5 +195,5 @@ if __name__ == '__main__':
     pinter.add_argument("-n", dest="cutoff", type=int, default=2,
             help="number of samples containing called peak")
 
-    args = vars(p.parse_args())
-    main(**args)
+    args = p.parse_args()
+    main(args.ref, args.files, args.classes, args.cutoff)

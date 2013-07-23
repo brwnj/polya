@@ -2,8 +2,8 @@
 # encoding: utf-8
 """
 From the shifts and merged sites, create a bed12 for each comparison with a
-trackline to visualize shift in UCSC browser. Strand is determined from the file
-name and must be present.
+trackline to visualize shift in UCSC browser. Builds output file names from
+header.
 """
 import sys
 import operator

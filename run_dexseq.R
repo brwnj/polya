@@ -14,6 +14,8 @@ groupb_names <- args[3]
 groupb_files <- args[4]
 output <- args[5]
 
+min_count <- 1
+
 groupa_name <- gsub(",", "", groupa_names, fixed=TRUE)
 groupb_name <- gsub(",", "", groupb_names, fixed=TRUE)
 anames <- as.vector(unlist(strsplit(groupa_names, ",")), mode="list")
@@ -28,7 +30,7 @@ design <- data.frame(row.names=(c(anames, bnames)),
             condition=c(rep(groupa_name, la), rep(groupb_name, lb)))
 counts <- read.HTSeqCounts(countfiles=c(afiles, bfiles), design=design)
 cds <- estimateSizeFactors(counts)
-cds <- estimateDispersions(cds, minCount=1, nCores=4, quiet=TRUE)
+cds <- estimateDispersions(cds, minCount=min_count, nCores=4, quiet=TRUE)
 cds <- fitDispersionFunction(cds)
 cds <- estimatelog2FoldChanges(cds, nCores=4)
 cds <- testForDEU(cds, nCores=4)
@@ -38,7 +40,7 @@ res <- DEUresultTable(cds)
 if(is.na(table(is.na(res$log2fold))["FALSE"]) && cds@dispFitCoefs <= 0){
     # start over...
     cds <- estimateSizeFactors(counts)
-    cds <- estimateDispersions(cds, minCount=1, nCores=4, quiet=TRUE)
+    cds <- estimateDispersions(cds, minCount=min_count, nCores=4, quiet=TRUE)
     cds <- fitDispersionFunction(cds)
     
     cds@dispFitCoefs[1] <- 0.001

@@ -64,6 +64,8 @@ repeat{
     }
     previous <- current
     min_count <- min_count + step_size
+    
+    # this will error out on some and rather than properly handle those
+    # errors i write the table each time.
+    write.table(res, file=output, sep="\t", col.names=NA)
 }
-
-write.table(res, file=output, sep="\t", col.names=NA)

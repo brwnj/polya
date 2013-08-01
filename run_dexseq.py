@@ -3,13 +3,19 @@
 """
 Given counts from 2 samples, generate fake replicates and run DEXSeq.
 """
-import os, tempfile, subprocess
+import os
+import sys
+import tempfile
+import subprocess
 from bsub import bsub
 from random import randint
 from toolshed import reader
 from itertools import combinations
 
 class StrandMismatch(Exception):
+    pass
+
+class ComparisonComplete(Exception):
     pass
 
 def replicate(fname, n=5):
@@ -31,16 +37,22 @@ def get_strand(flst):
         raise StrandMismatch()
     return strand.pop()
 
-def main(files, script, projid, queue):
-    submit = bsub("dexseq", P=projid, q=queue)
+def main(files, script, projid, queue, verbose):
+    submit = bsub("dexseq", P=projid, q=queue, n=4, verbose=verbose)
     for (a, b) in combinations(files, 2):
+        result = ""
         try:
             strand = get_strand([a, b])
             sample_a = sample_name(a)
             sample_b = sample_name(b)
             result = "{sample_a}_vs_{sample_b}.{strand}.txt".format(**locals())
-            if os.path.exists(result) or os.path.exists(result + ".gz"):
-                continue
+            out_file_check = os.path.splitext(result)[0]
+            # this script is run in the dexseq_results directory
+            for f in os.listdir("."):
+                if f.startswith(os.path.splitext(result)[0]):
+                    raise ComparisonComplete(result)
+            if verbose:
+                print >>sys.stderr, ">> comparing", sample_a, "and", sample_b
             rep_a = replicate(a)
             rep_b = replicate(b)
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
@@ -48,6 +60,9 @@ def main(files, script, projid, queue):
                     "{result}").format(**locals())
             submit(cmd)
         except StrandMismatch:
+            continue
+        except ComparisonComplete:
+            print >>sys.stderr, ">> comparison complete:", result
             continue
 
 if __name__ == '__main__':
@@ -61,5 +76,6 @@ if __name__ == '__main__':
             help="project id for cluster usage tracking")
     p.add_argument("-q", dest="queue", default="normal",
             help="lsf queue")
+    p.add_argument("-v", dest="verbose", action="store_true")
     args = vars(p.parse_args())
     main(**args)

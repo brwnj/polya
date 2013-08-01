@@ -8,6 +8,7 @@ header.
 import sys
 import operator
 from toolshed import reader
+from collections import OrderedDict
 
 class Bed(object):
     def __init__(self, toks):
@@ -33,7 +34,7 @@ def sites_to_dict(bed):
     return d
 
 def shifts_to_dict(cols, fname):
-    d = {}
+    d = OrderedDict()
     for c in cols:
         d[c] = {}
         for l in reader(fname):
@@ -43,7 +44,11 @@ def shifts_to_dict(cols, fname):
 
 def main(shifts, sites):
     refsites = sites_to_dict(sites)
-    cols = reader(shifts, header=False).next()
+    try:
+        cols = reader(shifts, header=False).next()
+    except StopIteration:
+        print >>sys.stderr, ">> empty file:", shifts
+        sys.exit(1)
     comparisons = cols[2:]
     shifts_d = shifts_to_dict(comparisons, shifts)
     for comparison, all_sites in shifts_d.iteritems():
@@ -54,7 +59,9 @@ def main(shifts, sites):
             b = refsites[b]
             lines.append(bed12line(a.chrom, a.start, b.stop, a.strand, shift))
         lines = sorted(lines, key=operator.itemgetter(0, 1))
-        f = open("{comparison}.bed".format(**locals()), 'wb')
+        result = "{comparison}.bed".format(**locals())
+        print >>sys.stderr, ">> writing", result
+        f = open(result, 'wb')
         for line in lines:
             print >>f, "\t".join(map(str, line))
         f.close()

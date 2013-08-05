@@ -238,7 +238,7 @@ if __name__ == '__main__':
     pclass.add_argument('--a-ratio-cutoff', dest='a_ratio', type=float,
             default=0.65, help="content ratio for A-region to be \
                                     considered A-rich [%(default)s]")
-    pclass.add_argument('--a-stretch-length' dest='a_stretch', type=int,
+    pclass.add_argument('--a-stretch-length', dest='a_stretch', type=int,
             default=4, help="number of bases downstream of site to use when \
                               flagging classifications as alpha [%(default)s]")
     pclass.add_argument('--canonical-region', dest="can_region",

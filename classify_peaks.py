@@ -5,8 +5,10 @@ Classify called peaks into categories as described Wang et al.:
 http://rnajournal.cshlp.org/content/19/3/413.long
 
 1   has A[A,T]TAAA; NOT A-rich downstream from this cleavage site
+1a  has A[A,T]TAAA; NOT A-rich downstream from this cleavage site; A stretch immediately downstream of site
 2   has A[A,T]TAAA; with A-rich sequence downstream
 3   lacks A[A,T]TAAA; no A-rich region downstream
+3a  lacks A[A,T]TAAA; no A-rich region downstream; A stretch immediately downstream of site
 4   only downstream A-rich sequence
 
 A gene on the '-' strand will have its peak called on '+' stranded reads. That
@@ -111,16 +113,20 @@ def append_seqs(peaks, seqs):
         tmp.write("\t".join(fields) + "\n")
     return tmp.name
 
-def peak_category(seq, a_region_size, a_ratio, can_region):
+def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region):
     """determine the category of the peak. returns category as string.
     
-    >>> peak_category("TTAAATAAATCTTCCTTTTAATTACTGGAAAAAATCTATTTT", 10, .75)
+    >>> peak_category("TTAAATAAATCTTCCTTTTAATTACTGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
     '1'
-    >>> peak_category("TTAAATAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .75)
+    >>> peak_category("TTAAATAAATCTTCCTTCTTTTAAAAGGTTTACATCTATTTT", 10, .65, 4, "-10,-30")
+    '1a'
+    >>> peak_category("TTAAATAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
     '2'
-    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTATCTGGAAGCAATCTATTTT", 10, .75)
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTATCTGGAAGCAATCTATTTT", 10, .65, 4, "-10,-30")
     '3'
-    >>> peak_category("TTAAAGAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .75)
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTAAAAGGAAGCAATCTATTTT", 10, .65, 4, "-10,-30")
+    '3a'
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
     '4'
     """
     canonical = ['AATAAA', 'ATTAAA']
@@ -133,6 +139,7 @@ def peak_category(seq, a_region_size, a_ratio, can_region):
     down = seq[half_len + 1:]
     found_pas = False
     found_arich = False
+    alpha = False
     # no more than three canonical PAS located in the upstream window
     pas_count = 0
     for pas in canonical:
@@ -150,23 +157,27 @@ def peak_category(seq, a_region_size, a_ratio, can_region):
         a_content = a_counts / float(a_region_size)
         if a_content > a_ratio:
             found_arich = True
+    # observed stretch of (A)s immediately downstream of site
+    if down[:a_stretch].count("A") == a_stretch:
+        alpha = True
     # return the category
     if found_pas and not found_arich:
-        return "1"
+        return "1a" if alpha else "1"
     if found_pas and found_arich:
         return "2"
     if not found_pas and not found_arich:
-        return "3"
+        return "3a" if alpha else "3"
     if not found_pas and found_arich:
         return "4"
 
-def classify_peaks(bed, min_count, a_region_size, a_ratio, can_region, out, size):
+def classify_peaks(bed, min_count, a_region_size, a_ratio, a_stretch,
+                    can_region, out, size):
     """classify the peak sequences."""
     res = ["chrom", "start", "stop", "name", "count", "strand", "seq"]
     for i, l in enumerate(reader(bed, header=res), start=1):
         # filter out peaks with low read support
         if int(l['count']) < min_count: continue
-        cat = peak_category(l['seq'], a_region_size, a_ratio, can_region)
+        cat = peak_category(l['seq'], a_region_size, a_ratio, a_stretch, can_region)
         # no more than three canonical PAS located in the upstream window
         if not cat: continue
         # only output the summit
@@ -199,8 +210,8 @@ def main(args):
     os.remove(seqs_tmp)
     if args.verbose:
         print >>sys.stderr, ">> classifying peaks"
-    classify_peaks(peak_tmp, args.min_count, args.a_region,\
-                    args.a_ratio, args.can_region, args.out_cols, args.wsize)
+    classify_peaks(peak_tmp, args.min_count, args.a_region, args.a_ratio,
+                    args.a_stretch, args.can_region, args.out_cols, args.wsize)
     os.remove(peak_tmp)
 
 if __name__ == '__main__':
@@ -227,6 +238,9 @@ if __name__ == '__main__':
     pclass.add_argument('--a-ratio-cutoff', dest='a_ratio', type=float,
             default=0.65, help="content ratio for A-region to be \
                                     considered A-rich [%(default)s]")
+    pclass.add_argument('--a-stretch-length' dest='a_stretch', type=int,
+            default=4, help="number of bases downstream of site to use when \
+                              flagging classifications as alpha [%(default)s]")
     pclass.add_argument('--canonical-region', dest="can_region",
             default="-10,-30", help="narrowed upstream region in which \
                     canonical PAS should contained [%(default)s]")

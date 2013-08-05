@@ -225,7 +225,7 @@ if __name__ == '__main__':
             help="number of bases to use when determining \
                     downstream A-content [%(default)s]")
     pclass.add_argument('--a-ratio-cutoff', dest='a_ratio', type=float,
-            default=0.75, help="content ratio for A-region to be \
+            default=0.65, help="content ratio for A-region to be \
                                     considered A-rich [%(default)s]")
     pclass.add_argument('--canonical-region', dest="can_region",
             default="-10,-30", help="narrowed upstream region in which \

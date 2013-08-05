@@ -59,6 +59,9 @@ def main(shifts, sites):
             b = refsites[b]
             lines.append(bed12line(a.chrom, a.start, b.stop, a.strand, shift))
         lines = sorted(lines, key=operator.itemgetter(0, 1))
+        if len(lines) == 0:
+            print >>sys.stderr, ">> nothing found in", comparison
+            continue
         result = "{comparison}.bed".format(**locals())
         print >>sys.stderr, ">> writing", result
         f = open(result, 'wb')

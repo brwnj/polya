@@ -229,7 +229,7 @@ if __name__ == '__main__':
     pslop = p.add_argument_group("slop settings")
     pslop.add_argument('-w', '--window-size', dest="wsize", type=int, default=50,
             help="number of nucleotides to add up- and \
-                    downstream of PAS [%(default)s]")
+                    downstream of peak site [%(default)s]")
 
     pclass = p.add_argument_group("peak classification")
     pclass.add_argument('--a-region-size', dest='a_region', type=int, default=10,
@@ -239,8 +239,9 @@ if __name__ == '__main__':
             default=0.65, help="content ratio for A-region to be \
                                     considered A-rich [%(default)s]")
     pclass.add_argument('--a-stretch-length', dest='a_stretch', type=int,
-            default=4, help="number of bases downstream of site to use when \
-                              flagging classifications as alpha [%(default)s]")
+            default=4, help="number of consecutive bases downstream of peak \
+                                site to use when flagging classifications as \
+                                alpha [%(default)s]")
     pclass.add_argument('--canonical-region', dest="can_region",
             default="-10,-30", help="narrowed upstream region in which \
                     canonical PAS should contained [%(default)s]")
@@ -249,8 +250,8 @@ if __name__ == '__main__':
     pclass.add_argument('-o', dest="out_cols", nargs="+",
             choices=["chrom", "start", "stop", "name", "count", "strand", "seq"],
             default=["chrom", "start", "stop", "name", "count", "strand"],
-            help="define what is printed in the output --\
-                    category is incorporated into 'name' [BED6]")
+            help="define what is printed in the output; \
+                    classification is incorporated into 'name' [BED6]")
 
     p.add_argument('--verbose', action='store_true',
             help="updates progress [%(default)s]")

@@ -45,7 +45,7 @@ class PeakBed(object):
     
     @property
     def pclass(self):
-        return int(self.name.split(".")[1].lstrip("c"))
+        return self.name.split(".")[1].lstrip("c")
 
 def cleanup(files):
     """remove the files of a list."""
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     psites = p.add_argument_group("poly(A) sites")
     psites.add_argument("-c", metavar="CLASS", dest="classes", action="append",
-            type=int, default=[1], choices=[1,2,3,4],
+            type=str, default=["1","1a"], choices=['1','1a','2','3','3a','4'],
             help="class of peaks used to generate consensus")
 
     pinter = p.add_argument_group("intersecting")

@@ -38,7 +38,7 @@ def get_strand(flst):
     return strand.pop()
 
 def main(files, script, projid, queue, verbose):
-    submit = bsub("dexseq", P=projid, q=queue, n="4", verbose=verbose)
+    submit = bsub("dexseq", P=projid, q=queue, n="4", R="span[hosts=1]", verbose=verbose)
     for (a, b) in combinations(files, 2):
         result = ""
         try:

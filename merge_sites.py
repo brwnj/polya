@@ -104,6 +104,12 @@ def multi_intersect(files, cutoff):
     classtmp.close()
     return classtmp.name
 
+def xref_to_dict(fname):
+    d = {}
+    for l in reader(fname, header=["from", "to"]):
+        d[l['from']] = l['to']
+    return d
+
 def lparser(line, cols):
     return dict(zip(cols, line.strip().split("\t")))
 
@@ -132,16 +138,27 @@ def unique_everseen(iterable, key=None):
                 seen_add(k)
                 yield element
 
-def get_out(l, n):
+def get_out(l, n, xref):
     out = [l['chrom'],l['start'],l['stop']]
-    out.append("p.c{pclass}.{gene}.{count}".format(\
-                                        pclass=l['peak'].rsplit(":", 1)[-1],\
-                                        gene=l['gene'],\
+    gene = l['gene']
+    # attempt to cross-reference an annotation
+    # full, gene level translation messes with dexseq
+    try:
+        gene = "{gene}|{xref}".format(gene=l['gene'], xref=xref[l['gene']])
+    except KeyError:
+        gene = l['gene']
+    out.append("p.c{pclass}.{gene}.{count}".format(
+                                        pclass=l['peak'].rsplit(":", 1)[-1],
+                                        gene=gene,
                                         count=n))
     out.extend(["0", l['strand']])
     return out
 
-def intersect(ref, peaks):
+
+
+def intersect(ref, xref, peaks):
+    if xref:
+        xref = xref_to_dict(xref)
     # group the output by chr->gene->start
     cmd = ("|bedtools intersect -wb -a {peaks} -b {ref} "
                 "| sort -k1,1 -k8,8 -k2,2n").format(**locals())
@@ -159,9 +176,9 @@ def intersect(ref, peaks):
                 negs.append(l)
                 continue
             # positive stranded sites
-            print >>tmp, "\t".join(get_out(l, i))
+            print >>tmp, "\t".join(get_out(l, i, xref))
         for i, l in izip(count(len(negs), -1), negs):
-            print >>tmp, "\t".join(get_out(l, i))
+            print >>tmp, "\t".join(get_out(l, i, xref))
     tmp.close()
     return tmp.name
 
@@ -172,9 +189,9 @@ def filter_peaks(bed, classes):
         if b.pclass not in classes: continue
         print b
 
-def main(ref, files, classes, cutoff):
+def main(ref, files, classes, xref, cutoff):
     peak_regions = multi_intersect(files, cutoff)
-    all_peaks = intersect(ref, peak_regions)
+    all_peaks = intersect(ref, xref, peak_regions)
     filter_peaks(all_peaks, classes)
     cleanup([peak_regions, all_peaks])
 
@@ -183,17 +200,24 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__,
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    p.add_argument("ref", help="bed of unique regions with gene symbol as name")
+    p.add_argument("ref", help="bed of regions with unique symbol (refseq, \
+                                    ucsc, etc.) as name. it's important that \
+                                    it's unique across transcripts if they're \
+                                    present in the reference")
     p.add_argument("files", nargs="+", help="classified peaks")
 
     psites = p.add_argument_group("poly(A) sites")
     psites.add_argument("-c", metavar="CLASS", dest="classes", action="append",
             type=str, default=["1","1a"], choices=['1','1a','2','3','3a','4'],
             help="class of peaks used to generate consensus")
+    psites.add_argument("-x", metavar="XREF", dest="xref", default=None,
+            help="use xref value in place of ref name in polya site name; \
+                    allowing rudimentary annotations. 2 columns: first is ref \
+                    name, second is new value")
 
     pinter = p.add_argument_group("intersecting")
     pinter.add_argument("-n", dest="cutoff", type=int, default=2,
             help="number of samples containing called peak")
 
     args = p.parse_args()
-    main(args.ref, args.files, args.classes, args.cutoff)
+    main(args.ref, args.files, args.classes, args.xref, args.cutoff)

@@ -18,8 +18,8 @@ import pandas as pd
 import subprocess as sp
 import pandas.rpy.common as com
 from array import array
-from rpy2.robjects.packages import importr
 from toolshed import reader, nopen
+from rpy2.robjects.packages import importr
 
 stats = importr('stats')
 
@@ -77,9 +77,7 @@ def main(a, b):
         genes.add(gene)
 
     # fisher testing per site per gene
-    fisher_test = {}
-    fisher_test['p_value'] = {}
-
+    fisher_test = {'p_value':{}}
     # store the p-values for qvality
     pvals = []
     for i, gene in enumerate(genes, start=1):
@@ -96,7 +94,6 @@ def main(a, b):
 
         # for some reason 1 is rounding to slightly greater than 1
         if p > 1: p = 1
-
         fisher_test["p_value"][gene] = p
         pvals.append(p)
 

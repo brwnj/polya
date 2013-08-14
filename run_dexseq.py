@@ -38,7 +38,7 @@ def get_strand(flst):
     return strand.pop()
 
 def main(files, script, projid, queue, verbose):
-    submit = bsub("dexseq", P=projid, q=queue, n=4, verbose=verbose)
+    submit = bsub("dexseq", P=projid, q=queue, n="4", verbose=verbose)
     for (a, b) in combinations(files, 2):
         result = ""
         try:
@@ -50,7 +50,7 @@ def main(files, script, projid, queue, verbose):
             # this script is run in the dexseq_results directory
             for f in os.listdir("."):
                 if f.startswith(os.path.splitext(result)[0]):
-                    raise ComparisonComplete(result)
+                    raise ComparisonComplete()
             if verbose:
                 print >>sys.stderr, ">> comparing", sample_a, "and", sample_b
             rep_a = replicate(a)

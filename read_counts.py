@@ -27,8 +27,16 @@ def add_slop(bed, sizes, n):
 
 def map_counts(bed, bedgraph):
     """print counts to stdout using bedtools map"""
+    # overlap and get counts
+    # add appropriate gene name
+    # add indeces for sorting
+    # sort by gene name then site number
+    # output dexseq columns
     cmd = """bedtools map -c 4 -o max -null 0 -a %s -b %s |\
-              awk '{split($4, symbol, "|"); split(symbol[1], gene, ".");print gene[3]":"$4"\t"$7}'"""\
+              awk '{split($4, symbol, "|"); split(symbol[1], gene, ".");print gene[3]":"$4"\t"$7}' |\
+              awk '{split($1, full, ":"); split(full[2], site, "."); print full[1]"\t"site[4]"\t"$0}' |\
+              sort -k1,1 -k2,2n |\
+              awk '{print $3"\t"$4}'"""\
               % (bed, bedgraph)
     sp.call(cmd, shell=True)
 
@@ -50,5 +58,5 @@ if __name__ == '__main__':
     p.add_argument("-b", dest="bases", type=int, default=2,
             help="increase region -b base pairs in each direction when \
             finding max read counts")
-    args = vars(p.parse_args())
-    main(**args)
+    args = p.parse_args()
+    main(args.counts, args.sites, args.sizes, args.bases)

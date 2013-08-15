@@ -3,9 +3,8 @@
 """
 Fisher test per poly(a) site after normalizing by total count at the gene level.
 Counts are divded by the total number of mapped reads to a particular gene and
-multiplied by the mean total count across samples.
-
-q-value is only calculated on genes that have been successfully tested.
+multiplied by the mean total count across samples. q-value is only calculated on
+genes that have been tested.
 """
 import os
 import sys
@@ -18,6 +17,7 @@ import pandas as pd
 import subprocess as sp
 import pandas.rpy.common as com
 from array import array
+from itertools import combinations
 from toolshed import reader, nopen
 from rpy2.robjects.packages import importr
 
@@ -45,7 +45,7 @@ def qvality(pvals):
     os.remove(f.name)
     return pvalues, peps, qvalues
 
-def get_qvalue(pvalue, pvalues, peps, qvalues):
+def gqvalue(pvalue, pvalues, peps, qvalues):
     """@brentp"""
     # find the index among all p-values
     idx = bisect.bisect_left(pvalues, pvalue)
@@ -55,73 +55,114 @@ def get_qvalue(pvalue, pvalues, peps, qvalues):
     except IndexError:
         return pvalue, peps[idx - 1], qvalues[idx - 1]
 
+def gsample(fname):
+    return os.path.basename(fname).split(".")[0]
+
+def gshift(lst):
+    """
+    increasing to decreasing    --->    proximal
+    increasing to increasing    --->    no shift
+    increasing to no change     --->    proximal
+
+    decreasing to increasing    --->    distal
+    decreasing to decreasing    --->    no shift
+    decreasing to no change     --->    distal
+
+    no change to decreasing     --->    proximal
+    no change to increasing     --->    distal
+    no change to no change      --->    no shift
+    """
+    res = []
+    for (a, b) in lst:
+        if a > b:
+            res.append("decreasing")
+        elif b > a:
+            res.append("increasing")
+        else:
+            res.append("equal")
+    assert len(res) == 2
+    if res[0] == "equal":
+        if res[1] == "decreasing":
+            return "proximal"
+        if res[1] == "increasing":
+            return "distal"
+        return "no shift"
+    elif res[0] == "increasing":
+        if res[1] == "decreasing":
+            return "proximal"
+        if res[1] == "increasing":
+            return "no shift"
+        return "proximal"
+    else: # res[0] == "decreasing"
+        if res[1] == "decreasing":
+            return "no shift"
+        if res[1] == "increasing":
+            return "distal"
+        return "distal"
+
+def gfoldchange(df):
+    df = df.div(df.min())
+    return np.log2(df.where(df > 1).sum().sum() / len(df))
+
+def _apply_qval(row, pvalues, peps, qvalues):
+    row['q'] = gqvalue(row['p'], pvalues, peps, qvalues)[2]
+
 def main(a, b):
-    # map counts to polya sites
-    # count_files = get_count_files(args.bed, args.bedgraphs)
-    # build the dataframe
-    
-    # Total count (TC): Gene counts are divided by the total number of mapped
-    # reads (or library size) associated with their lane and multiplied by the
-    # mean total count across all the samples of the dataset.
-    
-    # will have to split the first column into something meaningful
-    df = pd.read_csv...(a...)
-    # read_table(cfile, header=None, index_col=[0,1], names=["gene", "polya", sample])
-    temp_df = pd.read_csv...(b...)
-    # maybe split into multiindex at this point
-    df = df.join(temp_df)
-
+    aid = gsample(a)
+    bid = gsample(b)
+    df = pd.read_table(a, header=None, names=["site", aid], index_col="site")
+    tmp_df = pd.read_table(b, header=None, names=["site", bid], index_col="site")
+    df = df.join(tmp_df)
+    # create multiindex via split
+    df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Site'])
     # unique genes
-    genes = set()
-    for gene in count_df.index.get_level_values('gene'):
-        genes.add(gene)
-
-    # fisher testing per site per gene
-    fisher_test = {'p_value':{}}
-    # store the p-values for qvality
-    pvals = []
-    for i, gene in enumerate(genes, start=1):
-        gene_slice = count_df.ix[gene]
-
-        # more than one polya site and not all zero
-        if len(gene_slice) < 2 or gene_slice.sum().any() == 0: continue
-
-        # convert slice to r::dataframe
-        r_slice = com.convert_to_r_dataframe(gene_slice.transpose())
-
-        # fisher exact
-        p = stats.fisher_test(r_slice)[0][0]
-
-        # for some reason 1 is rounding to slightly greater than 1
-        if p > 1: p = 1
-        fisher_test["p_value"][gene] = p
-        pvals.append(p)
-
-    # double check
-    assert all(0 <= p <= 1 for p in pvals)
-
+    genes = set([g for g in df.index.get_level_values('Gene')])
+    res = {}    # fisher testing per site per gene
+    pvals = []  # store the p-values for qvality
+    for gene in genes:
+        gs = df.ix[gene]
+        # filter out all with only one site
+        if len(gs) < 2: continue
+        # flag genes without counts
+        use_gene_for_q = gs.sum().any()
+        # normalize and round down
+        try:
+            gs = (gs / gs.sum().astype('float') * gs.sum().mean()).astype('int')
+        except:
+            # don't normalize when one sample is all 0s
+            pass
+        # test each site pair across the gene
+        for (sitea, siteb) in combinations(gs.index, 2):
+            res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)] = {}
+            ss = gs.ix[[sitea, siteb]]
+            # transpose
+            sst = ss.T
+            # convert slice to r::dataframe
+            rs = com.convert_to_r_dataframe(sst)
+            # fisher exact
+            p = stats.fisher_test(rs)[0][0]
+            # for some reason 1 is rounding to slightly greater than 1
+            p = 1 if p > 1 else p
+            shift = gshift(sst.values)
+            fc = gfoldchange(sst.astype("float"))
+            res["{gene}:{sitea}:{siteb}".format(**locals())]["shift"] = shift
+            res["{gene}:{sitea}:{siteb}".format(**locals())]["foldchange"] = fc
+            res["{gene}:{sitea}:{siteb}".format(**locals())]["p"] = p
+            res["{gene}:{sitea}:{siteb}".format(**locals())]["q"] = 1.0
+            if use_gene_for_q: pvals.append(p)
     # calculate qvalues
     pvalues, peps, qvalues = qvality(pvals)
-    # convert dict of dicts to dataframe
-    fisher_df = pd.DataFrame(fisher_test)
-    # remove multiindex and set to gene level
-    df = df.reset_index().set_index("gene")
-    # add p-value column
-    df = df.join(fisher_df)
-    df = df.reset_index()
-    # print everything including pvals to temp
-    pvals_f = tempfile.mkstemp(suffix=".pvals")[1]
-    df.to_csv(pvals_f, sep="\t", header=False, index=False, na_rep="1.0", float_format="%.6g")
-    # append pep and qvalue to output
-    for line in nopen(pvals_f):
-        toks = line.rstrip("\r\n").split("\t")
-        p, pep, q = get_qvalue(float(toks[4]), pvalues, peps, qvalues)
-        print "%s\t%.6g\t%.6g" % (line.rstrip("\r\n"), pep, q)
-    os.remove(pvals_f)
+    # convert fisher results into dataframe
+    fisherdf = pd.DataFrame(res).T
+    fisherdf = fisherdf.ix[:, ["shift", "foldchange", "p", "q"]]
+    fisherdf.index = pd.MultiIndex.from_tuples([x.split(":") for x in fisherdf.index], names=['Gene','SiteA','SiteB'])
+    # update qvalue column with qvality output
+    fisherdf.apply(_apply_qval, axis=1, **{"pvalues":pvalues, "peps":peps, "qvalues":qvalues})
+    fisherdf.to_csv(sys.stdout, sep="\t", float_format="%.8g")
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__,
-                    formatter_class=argparse.RawDescriptionHelpFormatter)
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument("counts_a", help="first sample counts file in dexseq compatible format")
     p.add_argument("counts_b", help="second sample counts file")
     args = p.parse_args()

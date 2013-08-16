@@ -101,7 +101,14 @@ def gshift(lst):
         return "distal"
 
 def gfoldchange(df):
+    # fix zero issues...
+    if df.sum().sum() == 0:
+        return 0
+    df = df + 1
     df = df.div(df.min())
+    # no sample to sample change was observed at either site
+    if df.sum().sum() == 4:
+        return 0
     return np.log2(df.where(df > 1).sum().sum() / len(df))
 
 def _apply_qval(row, pvalues, peps, qvalues):

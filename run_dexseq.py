@@ -58,7 +58,7 @@ def main(files, script, projid, queue, verbose):
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
                     "{sample_b},{sample_b}x {b},{rep_b} "
                     "{result}").format(**locals())
-            submit(cmd)
+            submit(cmd, job_cap=20)
         except StrandMismatch:
             continue
         except ComparisonComplete:

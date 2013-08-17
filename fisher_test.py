@@ -114,11 +114,14 @@ def gfoldchange(df):
 def _apply_qval(row, pvalues, peps, qvalues):
     row['q'] = gqvalue(row['p'], pvalues, peps, qvalues)[2]
 
+def gcompression(fname):
+    return "gzip" if fname.endswith(".gz") else None
+
 def main(a, b):
     aid = gsample(a)
     bid = gsample(b)
-    df = pd.read_table(a, header=None, names=["site", aid], index_col="site")
-    tmp_df = pd.read_table(b, header=None, names=["site", bid], index_col="site")
+    df = pd.read_table(a, header=None, names=["site", aid], index_col="site", compression=gcompression(a))
+    tmp_df = pd.read_table(b, header=None, names=["site", bid], index_col="site", compression=gcompression(b))
     df = df.join(tmp_df)
     # create multiindex via split
     df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Site'])

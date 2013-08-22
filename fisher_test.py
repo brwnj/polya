@@ -127,8 +127,10 @@ def main(a, b):
     df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Site'])
     # unique genes
     genes = set([g for g in df.index.get_level_values('Gene')])
-    res = {}    # fisher testing per site per gene
-    pvals = []  # store the p-values for qvality
+    # fisher testing per site per gene
+    res = {}
+    # store the p-values for qvality
+    pvals = []
     for gene in genes:
         gs = df.ix[gene]
         # filter out all with only one site

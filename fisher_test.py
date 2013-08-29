@@ -60,6 +60,8 @@ def gsample(fname):
 
 def gshift(lst):
     """
+    slope...
+    
     increasing to decreasing    --->    proximal
     increasing to increasing    --->    no shift
     increasing to no change     --->    proximal

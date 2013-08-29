@@ -129,7 +129,7 @@ def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region):
     >>> peak_category("TTAAAGAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
     '4'
     """
-    canonical = ['AATAAA', 'ATTAAA']
+    canonical = ['AATAAA', 'ATTAAA'] # AAGAAA
     half_len = len(seq) / 2
     up = seq[:half_len]
     # these flip for string selection syntax

@@ -4,6 +4,7 @@
 Given counts from 2 samples, generate fake replicates and run DEXSeq.
 """
 import os
+import re
 import sys
 import tempfile
 import subprocess
@@ -37,8 +38,15 @@ def get_strand(flst):
         raise StrandMismatch()
     return strand.pop()
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [atoi(c) for c in re.split('(\d+)', text)]
+
 def main(files, script, projid, queue, verbose):
     submit = bsub("dexseq", P=projid, q=queue, n="4", R="span[hosts=1]", verbose=verbose)
+    files.sort(key=natural_keys)
     for (a, b) in combinations(files, 2):
         result = ""
         try:
@@ -58,7 +66,7 @@ def main(files, script, projid, queue, verbose):
             cmd = ("Rscript {script} {sample_a},{sample_a}x {a},{rep_a} "
                     "{sample_b},{sample_b}x {b},{rep_b} "
                     "{result}").format(**locals())
-            submit(cmd, job_cap=20)
+            submit(cmd)
         except StrandMismatch:
             continue
         except ComparisonComplete:

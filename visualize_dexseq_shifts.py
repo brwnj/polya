@@ -62,7 +62,7 @@ def main(shifts, sites):
         if len(lines) == 0:
             print >>sys.stderr, ">> nothing found in", comparison
             continue
-        result = "{comparison}.bed".format(**locals())
+        result = "{comparison}.dexseq.bed".format(**locals())
         print >>sys.stderr, ">> writing", result
         f = open(result, 'wb')
         for line in lines:

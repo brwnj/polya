@@ -33,7 +33,7 @@ def main(tests, xref, head):
             if df[a][l['SiteA']] or df[b][l['SiteA']] or df[a][l['SiteB']] or df[b][l['SiteB']]:
                 print "\t".join(l[h] for h in out_order)
         except KeyError:
-            # definitely not primary site
+            # definitely not a primary site
             pass
 
 if __name__ == '__main__':

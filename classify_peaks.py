@@ -133,7 +133,7 @@ def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region):
     half_len = len(seq) / 2
     up = seq[:half_len]
     # these flip for string selection syntax
-    range_right, range_left = map(int, can_region.split(","))
+    range_right, range_left = can_region
     # paper states PAS should be located in -10 to -30 region
     canonical_region = up[range_left:range_right]
     down = seq[half_len + 1:]
@@ -242,8 +242,8 @@ if __name__ == '__main__':
             default=4, help="number of consecutive bases downstream of peak \
                                 site to use when flagging classifications as \
                                 alpha [%(default)s]")
-    pclass.add_argument('--canonical-region', dest="can_region",
-            default="-10,-30", help="narrowed upstream region in which \
+    pclass.add_argument('--canonical-region', dest="can_region", type=int, nargs=2,
+            default=[-10,-30], help="narrowed upstream region in which \
                     canonical PAS should contained [%(default)s]")
     pclass.add_argument('--min-counts', dest="min_count", type=int, default=10,
             help="required read support for valid peak [%(default)s]")
@@ -255,5 +255,8 @@ if __name__ == '__main__':
 
     p.add_argument('--verbose', action='store_true',
             help="updates progress [%(default)s]")
-    args = p.parse_args()
+    args = p.parse_args() 
+    if not args.can_region[0] > args.can_region[1]:
+        print >>sys.stderr, "Canonical Region:\nLarger number first, e.g. -10 -30"
+        sys.exit(1)
     main(args)

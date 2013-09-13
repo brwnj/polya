@@ -146,6 +146,10 @@ def get_out(l, n, xref):
     try:
         gene = "{gene}|{xref}".format(gene=l['gene'], xref=xref[l['gene']])
     except KeyError:
+        # gene not in xref
+        gene = l['gene']
+    except TypeError:
+        # xref not supplied
         gene = l['gene']
     out.append("p.c{pclass}.{gene}.{count}".format(
                                         pclass=l['peak'].rsplit(":", 1)[-1],
@@ -154,7 +158,17 @@ def get_out(l, n, xref):
     out.extend(["0", l['strand']])
     return out
 
-
+def add_slop(bed, sizes, n=0):
+    """adds slop to bed entries. returns file name."""
+    tmp = tempfile.mkstemp(suffix=".bed")[1]
+    # slop output is not coordinate sorted
+    cmd = ("bedtools slop -b {slop_amt} -i {bed}"
+            " -g {sizes} | bedtools sort -i - > {out}").format(slop_amt=n,
+                                                                bed=bed,
+                                                                sizes=sizes,
+                                                                out=tmp)
+    sp.call(cmd, shell=True)
+    return tmp
 
 def intersect(ref, xref, peaks):
     if xref:
@@ -189,10 +203,18 @@ def filter_peaks(bed, classes):
         if b.pclass not in classes: continue
         print b
 
-def main(ref, files, classes, xref, cutoff):
+def main(ref, sizes, files, classes, xref, slop, cutoff):
+    # get the overlapping peaks
     peak_regions = multi_intersect(files, cutoff)
+    # add slop to gene model
+    # ref_with_slop = add_slop(ref, sizes, slop)
+    # annotate peaks with gene model
+    # all_peaks = intersect(ref_with_slop, xref, peak_regions)
     all_peaks = intersect(ref, xref, peak_regions)
+    # filter peaks by class
     filter_peaks(all_peaks, classes)
+    # remove leftover temp files
+    # cleanup([peak_regions, ref_with_slop, all_peaks])
     cleanup([peak_regions, all_peaks])
 
 if __name__ == '__main__':
@@ -204,6 +226,7 @@ if __name__ == '__main__':
                                     ucsc, etc.) as name. it's important that \
                                     it's unique across transcripts if they're \
                                     present in the reference")
+    # p.add_argument("sizes", help="chromosome sizes")
     p.add_argument("files", nargs="+", help="classified peaks")
 
     psites = p.add_argument_group("poly(A) sites")
@@ -216,8 +239,13 @@ if __name__ == '__main__':
                     name, second is new value")
 
     pinter = p.add_argument_group("intersecting")
+    # pinter.add_argument("-s", dest="slop", type=int, default=0,
+    #         help="number of bases to add onto up and downstream ends of the \
+    #                 gene model")
     pinter.add_argument("-n", dest="cutoff", type=int, default=2,
             help="number of samples containing called peak")
 
     args = p.parse_args()
+    # revision: taking out slop option
+    # main(args.ref, args.sizes, args.files, args.classes, args.xref, args.slop, args.cutoff)
     main(args.ref, args.files, args.classes, args.xref, args.cutoff)

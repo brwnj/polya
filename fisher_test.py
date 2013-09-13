@@ -159,10 +159,10 @@ def main(a, b):
             p = 1 if p > 1 else p
             shift = gshift(sst.values)
             fc = gfoldchange(sst.astype("float"))
-            res["{gene}:{sitea}:{siteb}".format(**locals())]["shift"] = shift
-            res["{gene}:{sitea}:{siteb}".format(**locals())]["foldchange"] = fc
-            res["{gene}:{sitea}:{siteb}".format(**locals())]["p"] = p
-            res["{gene}:{sitea}:{siteb}".format(**locals())]["q"] = 1.0
+            res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["shift"] = shift
+            res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["foldchange"] = fc
+            res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["p"] = p
+            res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["q"] = 1.0
             if use_gene_for_q: pvals.append(p)
     # calculate qvalues
     pvalues, peps, qvalues = qvality(pvals)

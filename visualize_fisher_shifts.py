@@ -34,11 +34,18 @@ def main(shifts, sites, cutoff=0.05, min_length=5):
     for l in reader(shifts):
         if not l['shift'] == "proximal" and not l['shift'] == "distal": continue
         if float(l['q']) >= cutoff: continue
-        a = refsites[l['SiteA']]
-        b = refsites[l['SiteB']]
+        sites = [l['SiteA'], l['SiteB']]
+        # sort by ascending site IDs
+        sites.sort(key=lambda x: int(x.split(".")[-1]))
+        downstream, upstream = sites
+        
+        a = refsites[downstream]
+        b = refsites[upstream]
+
         if abs(a.start - b.start) < min_length: continue
+        # if the strand is negative, sites are classified in descending order
         if a.strand == "-":
-            print "\t".join(map(str, bed12line(b.chrom, b.start, a.stop, b.strand, l['shift'])))
+            print "\t".join(map(str, bed12line(a.chrom, b.start, a.stop, a.strand, l['shift'])))
         else:
             print "\t".join(map(str, bed12line(a.chrom, a.start, b.stop, a.strand, l['shift'])))
 

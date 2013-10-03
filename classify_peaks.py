@@ -116,17 +116,17 @@ def append_seqs(peaks, seqs):
 def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region):
     """determine the category of the peak. returns category as string.
     
-    >>> peak_category("TTAAATAAATCTTCCTTTTAATTACTGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAATAAATCTTCCTTTTAATTACTGGAAAAAATCTATTTT", 10, .65, 4, [-10,-30])
     '1'
-    >>> peak_category("TTAAATAAATCTTCCTTCTTTTAAAAGGTTTACATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAATAAATCTTCCTTCTTTTAAAAGGTTTACATCTATTTT", 10, .65, 4, [-10,-30])
     '1a'
-    >>> peak_category("TTAAATAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAATAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, [-10,-30])
     '2'
-    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTATCTGGAAGCAATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTATCTGGAAGCAATCTATTTT", 10, .65, 4, [-10,-30])
     '3'
-    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTAAAAGGAAGCAATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAGTAAAAGGAAGCAATCTATTTT", 10, .65, 4, [-10,-30])
     '3a'
-    >>> peak_category("TTAAAGAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, "-10,-30")
+    >>> peak_category("TTAAAGAAATCTTCCTTTTAAAAAAAGGAAAAAATCTATTTT", 10, .65, 4, [-10,-30])
     '4'
     """
     canonical = ['AATAAA', 'ATTAAA'] # AAGAAA

@@ -53,7 +53,7 @@ if __name__ == '__main__':
     p.add_argument("counts", help="read counts for a sample as bedgraph")
     p.add_argument("sites", help="merged polya sites as bed")
     p.add_argument("sizes", help="chromosome sizes for specific genome")
-    # p.add_argument("-s", dest="species", default="hg18",
+    # p.add_argument("-s", dest="species", default="hg19",
     #         help="ucsc table to use")
     p.add_argument("-b", dest="bases", type=int, default=2,
             help="increase region -b base pairs in each direction when \

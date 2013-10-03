@@ -203,7 +203,7 @@ def filter_peaks(bed, classes):
         if b.pclass not in classes: continue
         print b
 
-def main(ref, sizes, files, classes, xref, slop, cutoff):
+def main(ref, files, classes, xref, cutoff):
     # get the overlapping peaks
     peak_regions = multi_intersect(files, cutoff)
     # add slop to gene model

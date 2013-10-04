@@ -4,7 +4,8 @@
 Fisher test per poly(a) site after normalizing by total count at the gene level.
 Counts are divded by the total number of mapped reads to a particular gene and
 multiplied by the mean total count across samples. q-value is only calculated on
-genes that have been tested.
+genes that have been tested. File format is Gene, Polya Site Name, and Count
+separated by tabs.
 """
 import os
 import sys
@@ -45,7 +46,7 @@ def qvality(pvals):
     os.remove(f.name)
     return pvalues, peps, qvalues
 
-def gqvalue(pvalue, pvalues, peps, qvalues):
+def get_qvalue(pvalue, pvalues, peps, qvalues):
     """@brentp"""
     # find the index among all p-values
     idx = bisect.bisect_left(pvalues, pvalue)
@@ -55,10 +56,10 @@ def gqvalue(pvalue, pvalues, peps, qvalues):
     except IndexError:
         return pvalue, peps[idx - 1], qvalues[idx - 1]
 
-def gsample(fname):
+def get_sample_name(fname):
     return os.path.basename(fname).split(".")[0]
 
-def gshift(lst):
+def get_shift_direction(lst):
     """
     slope...
     
@@ -102,7 +103,7 @@ def gshift(lst):
             return "distal"
         return "distal"
 
-def gfoldchange(df):
+def get_fold_change(df):
     # fix zero issues...
     if df.sum().sum() == 0:
         return 0
@@ -114,21 +115,21 @@ def gfoldchange(df):
     return np.log2(df.where(df > 1).sum().sum() / len(df))
 
 def _apply_qval(row, pvalues, peps, qvalues):
-    row['q'] = gqvalue(row['p'], pvalues, peps, qvalues)[2]
+    row['q'] = get_qvalue(row['p'], pvalues, peps, qvalues)[2]
 
-def gcompression(fname):
+def get_compression_setting(fname):
     return "gzip" if fname.endswith(".gz") else None
 
 def main(a, b):
-    aid = gsample(a)
-    bid = gsample(b)
-    df = pd.read_table(a, header=None, names=["site", aid], index_col="site", compression=gcompression(a))
-    tmp_df = pd.read_table(b, header=None, names=["site", bid], index_col="site", compression=gcompression(b))
+    aid = get_sample_name(a)
+    bid = get_sample_name(b)
+    df = pd.read_table(a, header=None, names=["gene", "site", aid], index_col=["gene", "site"],
+                compression=get_compression_setting(a))
+    tmp_df = pd.read_table(b, header=None, names=["gene", "site", bid],
+                index_col=["gene", "site"], compression=get_compression_setting(b))
     df = df.join(tmp_df)
-    # create multiindex via split
-    df.index = pd.MultiIndex.from_tuples([x.split(":") for x in df.index], names=['Gene','Site'])
     # unique genes
-    genes = set([g for g in df.index.get_level_values('Gene')])
+    genes = set([g for g in df.index.get_level_values('gene')])
     # fisher testing per site per gene
     res = {}
     # store the p-values for qvality
@@ -157,8 +158,8 @@ def main(a, b):
             p = stats.fisher_test(rs)[0][0]
             # for some reason 1 is rounding to slightly greater than 1
             p = 1 if p > 1 else p
-            shift = gshift(sst.values)
-            fc = gfoldchange(sst.astype("float"))
+            shift = get_shift_direction(sst.values)
+            fc = get_fold_change(sst.astype("float"))
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["shift"] = shift
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["foldchange"] = fc
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["p"] = p
@@ -177,7 +178,7 @@ def main(a, b):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__,
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument("counts_a", help="first sample counts file in dexseq compatible format")
-    p.add_argument("counts_b", help="second sample counts file")
+    p.add_argument("counts_a", help="count file as described in docstring")
+    p.add_argument("counts_b", help="second count file with same format")
     args = p.parse_args()
     main(args.counts_a, args.counts_b)

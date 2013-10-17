@@ -13,19 +13,12 @@ from itertools import groupby
 
 class CountRecord(object):
     def __init__(self, args):
-        self.gene_site = args[0]
-        self.count = int(args[1])
+        self.gene = args[0]
+        self.site = args[1]
+        self.count = int(args[2])
     
     def __repr__(self):
         return "CountRecord:{site}".format(site=self.site)
-
-    @property
-    def gene(self):
-        return self.gene_site.split(":", 1)[0]
-        
-    @property
-    def site(self):
-        return self.gene_site.split(":", 1)[1]
 
 def main(count_files):
     d = dict()

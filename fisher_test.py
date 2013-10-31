@@ -4,8 +4,8 @@
 Fisher test per poly(a) site after normalizing by total count at the gene level.
 Counts are divded by the total number of mapped reads to a particular gene and
 multiplied by the mean total count across samples. q-value is only calculated on
-genes that have been tested. File format is Gene, Polya Site Name, and Count
-separated by tabs.
+genes that have been tested. Input file format is Gene, Polya Site Name, and
+Count separated by tabs.
 """
 import os
 import sys
@@ -19,7 +19,6 @@ import subprocess as sp
 import pandas.rpy.common as com
 from array import array
 from itertools import combinations
-from toolshed import reader, nopen
 from rpy2.robjects.packages import importr
 
 stats = importr('stats')
@@ -59,7 +58,7 @@ def get_qvalue(pvalue, pvalues, peps, qvalues):
 def get_sample_name(fname):
     return os.path.basename(fname).split(".")[0]
 
-def get_shift_direction(lst):
+def get_shift_direction(count_matrix):
     """
     slope...
     
@@ -74,34 +73,31 @@ def get_shift_direction(lst):
     no change to decreasing     --->    proximal
     no change to increasing     --->    distal
     no change to no change      --->    no shift
+    
+    >>> import numpy as np
+    >>> arr = np.ndarray(shape=(2,2), dtype=int, buffer=np.array(0,2,16,3))
+    >>> get_shift_direction(arr)
+    'proximal'
     """
-    res = []
-    for (a, b) in lst:
+    assert len(count_matrix) == 2
+    shift_types = {'equal':{'decreasing':'proximal',
+                            'increasing':'distal',
+                            'equal':'no shift'},
+                   'increasing':{'decreasing':'proximal',
+                                 'increasing':'no shift',
+                                 'equal':'proximal'},
+                   'decreasing':{'decreasing':'no shift',
+                                  'increasing':'distal',
+                                  'equal':'distal'}}
+    observations = []
+    for (a, b) in count_matrix:
         if a > b:
-            res.append("decreasing")
+            observations.append("decreasing")
         elif b > a:
-            res.append("increasing")
+            observations.append("increasing")
         else:
-            res.append("equal")
-    assert len(res) == 2
-    if res[0] == "equal":
-        if res[1] == "decreasing":
-            return "proximal"
-        if res[1] == "increasing":
-            return "distal"
-        return "no shift"
-    elif res[0] == "increasing":
-        if res[1] == "decreasing":
-            return "proximal"
-        if res[1] == "increasing":
-            return "no shift"
-        return "proximal"
-    else: # res[0] == "decreasing"
-        if res[1] == "decreasing":
-            return "no shift"
-        if res[1] == "increasing":
-            return "distal"
-        return "distal"
+            observations.append("equal")
+    return shift_types[observations[0]][observations[1]]
 
 def get_fold_change(df):
     # fix zero issues...
@@ -120,13 +116,17 @@ def _apply_qval(row, pvalues, peps, qvalues):
 def get_compression_setting(fname):
     return "gzip" if fname.endswith(".gz") else None
 
+def get_dataframe(count_file, sample_id):
+    comp = get_compression_setting(count_file)
+    df = pd.read_table(count_file, header=None, names=["gene", "site", sample_id],
+                        index_col=["gene", "site"], compression=comp)
+    return df
+
 def main(a, b):
     aid = get_sample_name(a)
     bid = get_sample_name(b)
-    df = pd.read_table(a, header=None, names=["gene", "site", aid], index_col=["gene", "site"],
-                compression=get_compression_setting(a))
-    tmp_df = pd.read_table(b, header=None, names=["gene", "site", bid],
-                index_col=["gene", "site"], compression=get_compression_setting(b))
+    df = get_dataframe(a, aid)
+    tmp_df = get_dataframe(b, bid)
     df = df.join(tmp_df)
     # unique genes
     genes = set([g for g in df.index.get_level_values('gene')])
@@ -146,8 +146,12 @@ def main(a, b):
         except:
             # don't normalize when one sample is all 0s
             pass
+        # order the index based on site position
+        ordered_index = sorted(gs.index, key=lambda x: int(x.rsplit(".", 1)[-1]))
         # test each site pair across the gene
-        for (sitea, siteb) in combinations(gs.index, 2):
+        for (sitea, siteb) in combinations(ordered_index, 2):
+            # the sites must be in order for the shift direction to be correct
+            assert int(sitea.rsplit(".", 1)[-1]) < int(siteb.rsplit(".", 1)[-1])
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)] = {}
             ss = gs.ix[[sitea, siteb]]
             # transpose

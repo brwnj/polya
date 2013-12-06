@@ -11,6 +11,7 @@ import os.path as op
 import subprocess as sp
 from toolshed import reader, nopen
 from itertools import groupby, ifilterfalse, count, izip
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 class AnnotatedPeak(object):
     __slots__ = ['chrom','start','stop','name']
@@ -66,8 +67,7 @@ def file_len(fname):
 def map_peak_class(annotated_peaks, merged_tmp):
     """deletes incoming temp file."""
     tmp = tempfile.mkstemp(suffix=".bed")[1]
-    cmd = ("bedtools map -c 4 -o collapse -a {merged_tmp} "
-            "-b {annotated_peaks} > {tmp}").format(**locals())
+    cmd = ("bedtools map -c 4 -o collapse -a {merged_tmp} -b {annotated_peaks} > {tmp}").format(merged_tmp=merged_tmp, annotated_peaks=annotated_peaks, tmp=tmp)
     sp.call(cmd, shell=True)
     # if no overlap exists, nothing is output by bedtools map
     if file_len(tmp) < 1:
@@ -81,27 +81,26 @@ def multi_intersect(files, cutoff):
     """files = {sample_name:file_path}"""
     sitestmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     snames = [op.basename(f).split(".")[0].split("_")[0] for f in files]
-    cmd = ("|bedtools multiinter -cluster -header "
-                "-names {names} -i {files}").format(names=" ".join(snames),
-                                                    files=" ".join(files))
+    cmd = ("|bedtools multiinter -cluster -header -names {names} -i {files}").format(names=" ".join(snames), files=" ".join(files))
+    
     # apply cutoff, name peaks
     for i, l in enumerate(reader(cmd, header=True)):
         if int(l['num']) < cutoff: continue
-        print >>sitestmp, "\t".join([l['chrom'], l['start'], l['end'],
-                                        "peak_{i}".format(i=i)])
+        print >>sitestmp, "\t".join([l['chrom'], l['start'], l['end'], "peak_{i}".format(i=i)])
     sitestmp.close()
+    
     # annotate the merged sites by intersecting with all of the files
     classtmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     annotated_peaks = sitestmp.name
+    
     # pull out peak classes from input files
     for f in files:
         annotated_peaks = map_peak_class(f, annotated_peaks)
     for peak in reader(annotated_peaks, header=AnnotatedPeak):
         if peak.name is None: continue
-        print >>classtmp, "{chrom}\t{start}\t{stop}\t{name}\n".format(
-                                chrom=peak.chrom, start=peak.start,
-                                stop=peak.stop, name=peak.name)
+        print >>classtmp, "{chrom}\t{start}\t{stop}\t{name}\n".format(chrom=peak.chrom, start=peak.start, stop=peak.stop, name=peak.name)
     classtmp.close()
+    
     return classtmp.name
 
 def xref_to_dict(fname):
@@ -151,10 +150,7 @@ def get_out(l, n, xref):
     except TypeError:
         # xref not supplied
         gene = l['gene']
-    out.append("p.c{pclass}.{gene}.{count}".format(
-                                        pclass=l['peak'].rsplit(":", 1)[-1],
-                                        gene=gene,
-                                        count=n))
+    out.append("p.c{pclass}.{gene}.{count}".format(pclass=l['peak'].rsplit(":", 1)[-1], gene=gene, count=n))
     out.extend(["0", l['strand']])
     return out
 
@@ -162,11 +158,7 @@ def add_slop(bed, sizes, n=0):
     """adds slop to bed entries. returns file name."""
     tmp = tempfile.mkstemp(suffix=".bed")[1]
     # slop output is not coordinate sorted
-    cmd = ("bedtools slop -b {slop_amt} -i {bed}"
-            " -g {sizes} | bedtools sort -i - > {out}").format(slop_amt=n,
-                                                                bed=bed,
-                                                                sizes=sizes,
-                                                                out=tmp)
+    cmd = ("bedtools slop -b {slop_amt} -i {bed} -g {sizes} | bedtools sort -i - > {out}").format(slop_amt=n, bed=bed, sizes=sizes, out=tmp)
     sp.call(cmd, shell=True)
     return tmp
 
@@ -174,15 +166,12 @@ def intersect(ref, xref, peaks):
     if xref:
         xref = xref_to_dict(xref)
     # group the output by chr->gene->start
-    cmd = ("|bedtools intersect -wb -a {peaks} -b {ref} "
-                "| sort -k1,1 -k8,8 -k2,2n").format(**locals())
-    cols = ['chrom','start','stop','peak','_chrom',
-                '_start','_stop','gene','_score','strand']
+    cmd = ("|bedtools intersect -wb -a {peaks} -b {ref} | sort -k1,1 -k8,8 -k2,2n").format(peaks=peaks, ref=ref)
+    cols = ['chrom','start','stop','peak','_chrom','_start','_stop','gene','_score','strand']
     tmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     for g in grouper(nopen(cmd), cols):
         negs = []
-        for i, l in enumerate(unique_everseen(\
-                            g, lambda t: ret_item(t, cols, 'peak')), start=1):
+        for i, l in enumerate(unique_everseen(g, lambda t: ret_item(t, cols, 'peak')), start=1):
             l = lparser(l, cols)
             # negative stranded sites
             if l['strand'] == "-":
@@ -206,46 +195,25 @@ def filter_peaks(bed, classes):
 def main(ref, files, classes, xref, cutoff):
     # get the overlapping peaks
     peak_regions = multi_intersect(files, cutoff)
-    # add slop to gene model
-    # ref_with_slop = add_slop(ref, sizes, slop)
     # annotate peaks with gene model
-    # all_peaks = intersect(ref_with_slop, xref, peak_regions)
     all_peaks = intersect(ref, xref, peak_regions)
     # filter peaks by class
     filter_peaks(all_peaks, classes)
     # remove leftover temp files
-    # cleanup([peak_regions, ref_with_slop, all_peaks])
     cleanup([peak_regions, all_peaks])
 
 if __name__ == '__main__':
-    import argparse
-    p = argparse.ArgumentParser(description=__doc__,
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
 
-    p.add_argument("ref", help="bed of regions with unique symbol (refseq, \
-                                    ucsc, etc.) as name. it's important that \
-                                    it's unique across transcripts if they're \
-                                    present in the reference")
-    # p.add_argument("sizes", help="chromosome sizes")
+    p.add_argument("ref", help="bed of regions with unique symbol (refseq, ucsc, etc.) as name. it's important that it's unique across transcripts if they're present in the reference")
     p.add_argument("files", nargs="+", help="classified peaks")
 
     psites = p.add_argument_group("poly(A) sites")
-    psites.add_argument("-c", metavar="CLASS", dest="classes", action="append",
-            type=str, default=["1","1a"], choices=['1','1a','2','3','3a','4'],
-            help="class of peaks used to generate consensus")
-    psites.add_argument("-x", metavar="XREF", dest="xref", default=None,
-            help="use xref value in place of ref name in polya site name; \
-                    allowing rudimentary annotations. 2 columns: first is ref \
-                    name, second is new value")
+    psites.add_argument("-c", metavar="CLASS", dest="classes", action="append", type=str, default=["1","1a"], choices=['1','1a','2','3','3a','4','5','5a','6'], help="class of peaks used to generate consensus")
+    psites.add_argument("-x", metavar="XREF", dest="xref", default=None, help="use xref value in place of ref name in polya site name; allowing rudimentary annotations. 2 columns: first is ref name, second is new value")
 
     pinter = p.add_argument_group("intersecting")
-    # pinter.add_argument("-s", dest="slop", type=int, default=0,
-    #         help="number of bases to add onto up and downstream ends of the \
-    #                 gene model")
-    pinter.add_argument("-n", dest="cutoff", type=int, default=2,
-            help="number of samples containing called peak")
+    pinter.add_argument("-n", dest="cutoff", type=int, default=2, help="number of samples containing called peak")
 
     args = p.parse_args()
-    # revision: taking out slop option
-    # main(args.ref, args.sizes, args.files, args.classes, args.xref, args.slop, args.cutoff)
     main(args.ref, args.files, args.classes, args.xref, args.cutoff)

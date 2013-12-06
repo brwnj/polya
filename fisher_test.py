@@ -20,6 +20,7 @@ import pandas.rpy.common as com
 from array import array
 from itertools import combinations
 from rpy2.robjects.packages import importr
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 stats = importr('stats')
 
@@ -180,8 +181,7 @@ def main(a, b):
     fisherdf.to_csv(sys.stdout, sep="\t", float_format="%.8g")
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(description=__doc__,
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument("counts_a", help="count file as described in docstring")
     p.add_argument("counts_b", help="second count file with same format")
     args = p.parse_args()

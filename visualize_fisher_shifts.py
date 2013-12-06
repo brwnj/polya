@@ -5,6 +5,7 @@ From the shifts and merged sites, create a bed12 for each comparison with a
 trackline to visualize shift in UCSC browser. Unsorted output to stdout.
 """
 from toolshed import reader
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 class Bed(object):
     def __init__(self, toks):
@@ -50,14 +51,10 @@ def main(shifts, sites, cutoff=0.05, min_length=5):
             print "\t".join(map(str, bed12line(a.chrom, a.start, b.stop, a.strand, l['shift'])))
 
 if __name__ == '__main__':
-    import argparse
-    p = argparse.ArgumentParser(description=__doc__,
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     p.add_argument("shifts", help="output of `fisher_test.py`")
     p.add_argument("sites", help="output of `merge_sites.py`")
-    p.add_argument("-q", dest="cutoff", default=0.05, type=float,
-            help="suppress peaks with a q-value less than cutoff")
-    p.add_argument("-l", dest="min_length", default=5, type=int,
-            help="suppress peaks with a distance between them less than min_length")
+    p.add_argument("-q", dest="cutoff", default=0.05, type=float, help="suppress peaks with a q-value less than cutoff")
+    p.add_argument("-l", dest="min_length", default=5, type=int, help="suppress peaks with a distance between them less than min_length")
     args = p.parse_args()
     main(args.shifts, args.sites, args.cutoff, args.min_length)

@@ -340,7 +340,7 @@ if __name__ == '__main__':
     pclass.add_argument('--canonical-region', dest="can_region", type=int, nargs=2, default=[-5,-40], help="narrowed upstream region in which canonical PAS should contained [%(default)s]")
     pclass.add_argument('--min-counts', dest="min_count", type=int, default=10, help="required read support for valid peak [%(default)s]")
     pclass.add_argument('--output-columns', dest="out_cols", nargs="+", choices=["chrom", "start", "stop", "name", "count", "strand", "seq"], default=["chrom", "start", "stop", "name", "count", "strand"], help="define what is printed in the output; classification is incorporated into 'name' [BED6]")
-    pclass.add_argument('-s', '--noncanonical-seqs', dest="noncan_seqs", help="if specified, class 3 sites will be further subdivided using these 6 nt sequences, eg. -s AGTAAA,TATAAA,TTTAAA, giving class 5 peaks")
+    pclass.add_argument('-s', '--noncanonical-seqs', dest="noncan_seqs", help="if specified, class 3 and 4 sites will be further subdivided using these hexamers to class 5 and 6, eg. -s AGTAAA,TATAAA,TTTAAA")
 
     args = p.parse_args()
 
@@ -351,6 +351,8 @@ if __name__ == '__main__':
     if args.noncan_seqs:
         r = re.compile(r"^[ACTGactg]{6}$")
         args.noncan_seqs = [seq.upper() for seq in args.noncan_seqs.split(",") if r.match(seq)]
+        print >>sys.stderr, ">> hexamers used in class 5 and 6:"
+        print >>sys.stderr, "\n".join(args.noncan_seqs)
 
     if doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE).failed == 0:
         main(args)

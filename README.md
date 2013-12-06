@@ -4,21 +4,23 @@ Scripts accompanying a pipeline to identify alternate polyadenylation sites.
 
 #Workflow
 
-1. Call bases using alternate base caller. [AYB](https://github.com/timmassingham/AYB2)
-2. Move UMI from sequence onto the read name. [umitools](https://github.com/brwnj/umitools)
+Call bases using alternate base caller. [AYB](https://github.com/timmassingham/AYB2)
+
+Move UMI from sequence onto the read name. [umitools](https://github.com/brwnj/umitools)
 
 ```
 umitools trim --verbose $unprocessed_fastq $UMI | gzip -c > $fastq
 ```
 
-3. Align the reads. We used Novoalign.
-4. Remove duplicate UMIs across genome.
+Align the reads. We used Novoalign.
+
+Remove duplicate UMIs across genome.
 
 ```
 umitools rmdup --verbose $umibam $bam $UMI
 ```
 
-5. Call peaks on stranded bams. [MACS](https://github.com/taoliu/MACS)
+Call peaks on stranded bams. [MACS](https://github.com/taoliu/MACS)
 
 ```
 samtools view -hb -f 0x10 $bam > $negbam
@@ -26,7 +28,7 @@ samtools view -hb -F 0x10 $bam > $posbam
 macs2 callpeak -t $negbam -n $negout --keep-dup auto --nomodel -s 25 --extsize 5
 ```
 
-6. Sort out the peaks. Peaks called on the negative reads are from positive
+Sort out the peaks. Peaks called on the negative reads are from positive
 stranded genes, so add sign according to file name (which is incorporated in 
 the peak name).
 
@@ -42,7 +44,7 @@ zcat $negout.gz $posout.gz \
     | gzip -c > $peak
 ```
 
-7. Classify the peaks using bedgraphs from 5' read counts.
+Classify the peaks using bedgraphs from 5' read counts.
 
 ```
 python classify_peaks.py $peak $posbg $negbg $FASTA $SIZES \
@@ -50,7 +52,7 @@ python classify_peaks.py $peak $posbg $negbg $FASTA $SIZES \
     | gzip -c > $classified
 ````
 
-8. Merge sites from across samples using only sites you intend to test.
+Merge sites from across samples using only sites you intend to test.
 
 ```
 python merge_sites.py -n2 -c3 -c3a -c5 -c5a -x $XREF $EXONS $peaks \
@@ -58,8 +60,9 @@ python merge_sites.py -n2 -c3 -c3a -c5 -c5a -x $XREF $EXONS $peaks \
     | gzip -c > $sites135
 ```
 
-9. Get counts for each sample across the merged sites.
-10. Run Fisher tests for desired contrasts.
+Get counts for each sample across the merged sites.
+
+Run Fisher tests for desired contrasts.
 
 ```
 python fisher_test.py a_counts b_counts \

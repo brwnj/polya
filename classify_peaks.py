@@ -15,6 +15,7 @@ Additional sub-category to further characterize class 3 sites:
 
 5   has non-canonical site; not A-rich downstream
 5a  has non-canonical site; not A-rich downstream; A-stretch immediately downstream
+6   has non-canonical site; A-rich downstream sequence
 
 A gene on the '-' strand will have its peak called on '+' stranded reads. That
 symbol should be accounted for when merging peaks from '+' and '-'. A bedgraph
@@ -33,7 +34,7 @@ from toolshed import reader
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 os.environ['TERM'] = 'linux'
-__version__ = "0.3"
+__version__ = "0.4"
 
 def process_counts(pos, neg):
     """merges 2 bedgraphs, converts to bed with count in score field, and
@@ -227,8 +228,7 @@ def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region, noncan_seq
 
     sequence has non-canonical hit, but is A-rich downstream
     >>> peak_category("TTAAAGAAATCTTCCTTTTAGTAAAAAAAAAAAATCTATTTT", 10, .65, 4, [-10,-30], noncan_seqs)
-    '4'
-    >>>
+    '6'
     """
     site_class = ""
 
@@ -240,30 +240,42 @@ def peak_category(seq, a_region_size, a_ratio, a_stretch, can_region, noncan_seq
 
     # analyze downstream sequence
     downstream_a_rich = test_a_rich(downstream, a_region_size, a_ratio)
-    alpha_subcategory = '' if downstream_a_rich else test_for_a_stretch(downstream, a_stretch)
 
-    # test the canonical sequences first
-    for query in canonical:
-        if target_region.find(query) != -1:
-            site_class = "2" if downstream_a_rich else "1"
-            break
-        elif not downstream_a_rich:
-            site_class = "3"
-        else:
-            site_class = "4"
-
-    # need to test class 2s further: see docstring
-    if site_class == "2":
-        hits = total_canonical_hits(canonical, upstream)
-        if hits > 3:
-            site_class = ""
-
-    # test non-canonical sequences against class 3 sites
-    if site_class == "3" and noncan_seqs:
-        for query in noncan_seqs:
+    if downstream_a_rich:
+        alpha_subcategory = ''
+        # test the canonical sequences first
+        for query in canonical:
             if target_region.find(query) != -1:
-                site_class = "5"
+                site_class = "2"
                 break
+            else:
+                site_class = "4"
+        # need to test class 2s (and maybe class 6) further: see docstring
+        if site_class == "2":
+            if total_canonical_hits(canonical, upstream) > 3:
+                site_class = ""
+        # test non-canonical sequences against class 4 sites
+        if noncan_seqs and site_class == "4":
+            for query in noncan_seqs:
+                if target_region.find(query) != -1:
+                    site_class = "6"
+                    break
+
+    else:
+        alpha_subcategory = test_for_a_stretch(downstream, a_stretch)
+        # test the canonical sequences
+        for query in canonical:
+            if target_region.find(query) != -1:
+                site_class = "1"
+                break
+            else:
+                site_class = "3"
+        # test non-canonical sequences against class 3 sites
+        if noncan_seqs and site_class == "3":
+            for query in noncan_seqs:
+                if target_region.find(query) != -1:
+                    site_class = "5"
+                    break
 
     return site_class + alpha_subcategory
 

@@ -150,17 +150,9 @@ def get_out(l, n, xref):
     except TypeError:
         # xref not supplied
         gene = l['gene']
-    out.append("p.c{pclass}.{gene}.{count}".format(pclass=l['peak'].rsplit(":", 1)[-1], gene=gene, count=n))
+    out.append("{pclass}.{gene}.{count}".format(pclass=l['peak'].rsplit(":", 1)[-1], gene=gene, count=n))
     out.extend(["0", l['strand']])
     return out
-
-def add_slop(bed, sizes, n=0):
-    """adds slop to bed entries. returns file name."""
-    tmp = tempfile.mkstemp(suffix=".bed")[1]
-    # slop output is not coordinate sorted
-    cmd = ("bedtools slop -b {slop_amt} -i {bed} -g {sizes} | bedtools sort -i - > {out}").format(slop_amt=n, bed=bed, sizes=sizes, out=tmp)
-    sp.call(cmd, shell=True)
-    return tmp
 
 def intersect(ref, xref, peaks):
     if xref:

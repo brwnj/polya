@@ -21,8 +21,7 @@ def bed12line(chrom, start, stop, strand, shift):
         arrow = "-" if shift == "proximal" else "+"
     if strand == "-":
         arrow = "+" if shift == "proximal" else "-"
-    return [chrom, start, stop, shift, score, arrow,
-                start, stop, color, 2, "1,1", "0,{diff}".format(**locals())]
+    return [chrom, start, stop, shift, score, arrow, start, stop, color, 2, "1,1", "0,{diff}".format(diff=diff)]
 
 def sites_to_dict(bed):
     d = {}
@@ -39,7 +38,7 @@ def main(shifts, sites, cutoff=0.05, min_length=5):
         # sort by ascending site IDs
         sites.sort(key=lambda x: int(x.split(".")[-1]))
         downstream, upstream = sites
-        
+
         a = refsites[downstream]
         b = refsites[upstream]
 

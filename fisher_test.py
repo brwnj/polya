@@ -62,7 +62,7 @@ def get_sample_name(fname):
 def get_shift_direction(count_matrix):
     """
     slope...
-    
+
     increasing to decreasing    --->    proximal
     increasing to increasing    --->    no shift
     increasing to no change     --->    proximal
@@ -74,7 +74,7 @@ def get_shift_direction(count_matrix):
     no change to decreasing     --->    proximal
     no change to increasing     --->    distal
     no change to no change      --->    no shift
-    
+
     >>> import numpy as np
     >>> arr = np.ndarray(shape=(2,2), dtype=int, buffer=np.array(0,2,16,3))
     >>> get_shift_direction(arr)
@@ -126,43 +126,55 @@ def get_dataframe(count_file, sample_id):
 def main(a, b):
     aid = get_sample_name(a)
     bid = get_sample_name(b)
+
     df = get_dataframe(a, aid)
     tmp_df = get_dataframe(b, bid)
     df = df.join(tmp_df)
+
+    # replace NaN with 0
+    df.fillna(0, inplace=True)
     # unique genes
     genes = set([g for g in df.index.get_level_values('gene')])
+
     # fisher testing per site per gene
     res = {}
     # store the p-values for qvality
     pvals = []
+
     for gene in genes:
         gs = df.ix[gene]
         # filter out all with only one site
         if len(gs) < 2: continue
         # flag genes without counts
         use_gene_for_q = gs.sum().any()
+
         # normalize and round down
         try:
             gs = (gs / gs.sum().astype('float') * gs.sum().mean()).astype('int')
         except:
             # don't normalize when one sample is all 0s
             pass
+
         # order the index based on site position
         ordered_index = sorted(gs.index, key=lambda x: int(x.rsplit(".", 1)[-1]))
         # test each site pair across the gene
+
         for (sitea, siteb) in combinations(ordered_index, 2):
             # the sites must be in order for the shift direction to be correct
             assert int(sitea.rsplit(".", 1)[-1]) < int(siteb.rsplit(".", 1)[-1])
+
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)] = {}
             ss = gs.ix[[sitea, siteb]]
             # transpose
             sst = ss.T
             # convert slice to r::dataframe
             rs = com.convert_to_r_dataframe(sst)
+
             # fisher exact
             p = stats.fisher_test(rs)[0][0]
             # for some reason 1 is rounding to slightly greater than 1
             p = 1 if p > 1 else p
+
             shift = get_shift_direction(sst.values)
             fc = get_fold_change(sst.astype("float"))
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["shift"] = shift
@@ -170,18 +182,21 @@ def main(a, b):
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["p"] = p
             res["{gene}:{sitea}:{siteb}".format(gene=gene, sitea=sitea, siteb=siteb)]["q"] = 1.0
             if use_gene_for_q: pvals.append(p)
+
     # calculate qvalues
     pvalues, peps, qvalues = qvality(pvals)
+
     # convert fisher results into dataframe
     fisherdf = pd.DataFrame(res).T
     fisherdf = fisherdf.ix[:, ["shift", "foldchange", "p", "q"]]
     fisherdf.index = pd.MultiIndex.from_tuples([x.split(":") for x in fisherdf.index], names=['Gene','SiteA','SiteB'])
+
     # update qvalue column with qvality output
     fisherdf.apply(_apply_qval, axis=1, **{"pvalues":pvalues, "peps":peps, "qvalues":qvalues})
     fisherdf.to_csv(sys.stdout, sep="\t", float_format="%.8g")
 
 if __name__ == '__main__':
-    p = ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     p.add_argument("counts_a", help="count file as described in docstring")
     p.add_argument("counts_b", help="second count file with same format")
     args = p.parse_args()

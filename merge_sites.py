@@ -43,10 +43,10 @@ class PeakBed(object):
 
     def __str__(self):
         return "\t".join([getattr(self, s) for s in self.__slots__])
-    
+
     @property
     def pclass(self):
-        return self.name.split(".")[1].lstrip("c")
+        return self.name.split(".", 1)[0]
 
 def cleanup(files):
     """remove the files of a list."""
@@ -67,7 +67,7 @@ def file_len(fname):
 def map_peak_class(annotated_peaks, merged_tmp):
     """deletes incoming temp file."""
     tmp = tempfile.mkstemp(suffix=".bed")[1]
-    cmd = ("bedtools map -c 4 -o collapse -a {merged_tmp} -b {annotated_peaks} > {tmp}").format(merged_tmp=merged_tmp, annotated_peaks=annotated_peaks, tmp=tmp)
+    cmd = ("bedtools map -c 4 -o collapse -a {merged_tmp} -b {annotated_peaks} | bedtools sort -i - > {tmp}").format(merged_tmp=merged_tmp, annotated_peaks=annotated_peaks, tmp=tmp)
     sp.call(cmd, shell=True)
     # if no overlap exists, nothing is output by bedtools map
     if file_len(tmp) < 1:
@@ -82,17 +82,17 @@ def multi_intersect(files, cutoff):
     sitestmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     snames = [op.basename(f).split(".")[0].split("_")[0] for f in files]
     cmd = ("|bedtools multiinter -cluster -header -names {names} -i {files}").format(names=" ".join(snames), files=" ".join(files))
-    
+
     # apply cutoff, name peaks
     for i, l in enumerate(reader(cmd, header=True)):
         if int(l['num']) < cutoff: continue
         print >>sitestmp, "\t".join([l['chrom'], l['start'], l['end'], "peak_{i}".format(i=i)])
     sitestmp.close()
-    
+
     # annotate the merged sites by intersecting with all of the files
     classtmp = open(tempfile.mkstemp(suffix=".bed")[1], 'wb')
     annotated_peaks = sitestmp.name
-    
+
     # pull out peak classes from input files
     for f in files:
         annotated_peaks = map_peak_class(f, annotated_peaks)
@@ -100,7 +100,7 @@ def multi_intersect(files, cutoff):
         if peak.name is None: continue
         print >>classtmp, "{chrom}\t{start}\t{stop}\t{name}\n".format(chrom=peak.chrom, start=peak.start, stop=peak.stop, name=peak.name)
     classtmp.close()
-    
+
     return classtmp.name
 
 def xref_to_dict(fname):
